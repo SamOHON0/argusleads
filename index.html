@@ -1711,7 +1711,34 @@ function classify(websiteUri) {
 const EMAIL_RE = /[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}/g;
 const BAD_EMAIL = /(example\.|sentry|wixpress|cloudflare|godaddy|@2x|\.png|\.jpg|\.jpeg|\.gif|\.webp|\.svg|\.css|\.js|schema\.org|yourdomain|email@|name@|user@|no-?reply)/i;
 
+// Own Vercel scraper (/api/scrape) is tried first: faster, no rate limits, better
+// success rate. Falls back to the public allorigins proxy if the function isn't
+// deployed (e.g. when this file is opened directly from disk).
+let ownScraperAvailable = null; // null = unknown, true/false once probed
+
 async function fetchViaProxy(url) {
+  // 1) own serverless scraper, when running on a deployed domain
+  if (ownScraperAvailable !== false && location.protocol.indexOf('http') === 0) {
+    const controller1 = new AbortController();
+    const t1 = setTimeout(() => controller1.abort(), 11000);
+    try {
+      const r = await fetch('/api/scrape?url=' + encodeURIComponent(url), { signal: controller1.signal });
+      if (r.ok) {
+        ownScraperAvailable = true;
+        return await r.text();
+      }
+      if (r.status === 404 || r.status === 405) {
+        ownScraperAvailable = false; // function not deployed - stop trying this session
+      }
+      // other statuses (502 site blocked us, 415 not html): fall through to public proxy for this URL only
+    } catch (e) {
+      if (ownScraperAvailable === null) ownScraperAvailable = false;
+    } finally {
+      clearTimeout(t1);
+    }
+  }
+
+  // 2) public proxy fallback
   const proxied = 'https://api.allorigins.win/raw?url=' + encodeURIComponent(url);
   const controller = new AbortController();
   const t = setTimeout(() => controller.abort(), 12000);
@@ -1942,7 +1969,7 @@ async function scanLead(r) {
   try { origin = new URL(r.website).origin; } catch (e) { return false; }
 
   const needEmail = !r.email;
-  const pages = [r.website, origin + '/contact', origin + '/contact-us', origin + '/about'];
+  const pages = [r.website, origin + '/contact', origin + '/contact-us', origin + '/about', origin + '/about-us', origin + '/team', origin + '/privacy-policy'];
   const tried = new Set();
   let gotAnything = false;
 
@@ -2011,13 +2038,14 @@ async function scanSites() {
   document.getElementById('errorBox').style.display = 'none';
 
   let done = 0, found = 0;
-  const CONCURRENCY = 3;
+  const CONCURRENCY = ownScraperAvailable === false ? 3 : 5;
   const queue = [...targets];
 
   async function worker() {
     while (queue.length) {
       const lead = queue.shift();
-      setStatus(true, 'Scanning sites for emails + socials... ' + done + '/' + targets.length + ' (' + found + ' updated)', Math.round((done / targets.length) * 100));
+      const engine = ownScraperAvailable === true ? '' : (ownScraperAvailable === false ? ' (public proxy - deploy api/scrape.js for better results)' : '');
+      setStatus(true, 'Scanning sites for emails + socials... ' + done + '/' + targets.length + ' (' + found + ' updated)' + engine, Math.round((done / targets.length) * 100));
       const ok = await scanLead(lead);
       if (ok) found++;
       done++;

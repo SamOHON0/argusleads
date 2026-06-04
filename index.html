@@ -1504,6 +1504,66 @@ async function mergeCurrentListInto(targetId) {
   switchView(target.id);
 }
 
+/* ===== DELETE LEADS ===== */
+async function deleteSelectedLeads() {
+  if (!selectedIds.size) return;
+  if (demoMode) { showError('Deleting is disabled in example mode.'); return; }
+
+  const n = selectedIds.size;
+  if (!confirm('Permanently delete ' + n + ' lead' + (n === 1 ? '' : 's') + '?\n\nThis removes them from the database, every list, and both your devices. Statuses and notes go with them. This cannot be undone.')) return;
+
+  const ids = [...selectedIds];
+  setStatus(true, 'Deleting ' + n + ' lead' + (n === 1 ? '' : 's') + '...', 50);
+
+  // cloud: delete in batches via id filter
+  if (sbConfigured()) {
+    try {
+      for (let i = 0; i < ids.length; i += 50) {
+        const batch = ids.slice(i, i + 50);
+        const filter = 'id=in.(' + batch.map(id => '"' + id.replace(/"/g, '') + '"').join(',') + ')';
+        const res = await fetch(sbEndpoint() + '?' + filter, { method: 'DELETE', headers: sbHeaders() });
+        if (!res.ok) {
+          const t = await res.text();
+          throw new Error('Cloud delete failed (' + res.status + '). ' + t.slice(0, 150));
+        }
+      }
+    } catch (e) {
+      setStatus(false);
+      showError(esc(e.message) + '<br>Nothing was removed locally - fix the cloud issue and retry so the two stay in sync.');
+      return;
+    }
+  }
+
+  // local mirror
+  const m = store.get('st_all_leads', {});
+  for (const id of ids) delete m[id];
+  store.set('st_all_leads', m);
+
+  // pipeline entries
+  const p = store.get('st_pipeline', {});
+  for (const id of ids) delete p[id];
+  store.set('st_pipeline', p);
+
+  // pull the ids out of every list
+  const idSet = new Set(ids);
+  for (const list of lists) {
+    const before = list.leadIds.length;
+    list.leadIds = list.leadIds.filter(id => !idSet.has(id));
+    if (list.leadIds.length !== before) await persistList(list);
+  }
+
+  // current view + search cache
+  allResults = allResults.filter(r => !idSet.has(r.id));
+  lastSearchResults = lastSearchResults.filter(r => !idSet.has(r.id));
+
+  clearSelection();
+  renderTabs();
+  updateStats();
+  render();
+  setStatus(true, n + ' lead' + (n === 1 ? '' : 's') + ' deleted.', 100);
+  setTimeout(() => setStatus(false), 2500);
+}
+
 /* ===== VIEW SWITCHING ===== */
 async function switchView(mode) {
   if (demoMode && mode !== 'search') { demoMode = false; document.getElementById('demoBanner').style.display = 'none'; }
@@ -1608,6 +1668,7 @@ function renderSelectionBar() {
   if (viewMode !== 'search' && viewMode !== 'all') {
     h += '<button class="btn btn-ghost btn-sm" onclick="removeSelectedFromList()">Remove from this list</button>';
   }
+  h += '<button class="btn btn-ghost btn-sm" onclick="deleteSelectedLeads()" style="color: var(--danger); border-color: rgba(248,113,113,0.35);">Delete</button>';
   h += '<button class="btn btn-ghost btn-sm" onclick="clearSelection(); render();">Clear selection</button>';
   bar.classList.add('open');
   bar.innerHTML = h;

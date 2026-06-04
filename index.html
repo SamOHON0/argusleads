@@ -86,6 +86,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Argus | SquareTwo</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Cellipse cx='32' cy='32' rx='30' ry='19' fill='%23161b22' stroke='%233a4555' stroke-width='3'/%3E%3Ccircle cx='32' cy='32' r='9' fill='%234ade80'/%3E%3Ccircle cx='29.5' cy='29.5' r='3' fill='%23c9f7d9'/%3E%3C/svg%3E">
 <meta name="robots" content="noindex, nofollow">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -1859,19 +1860,74 @@ function isReviewRecent(iso) {
   return (Date.now() - new Date(iso).getTime()) < 120 * 24 * 3600 * 1000;
 }
 
-/* ===== SITE GRADER + AD DETECTION + OWNER EXTRACTION ===== */
-function gradeSite(pageHtml, url) {
+/* ===== SITE GRADER (evidence-based) + AD DETECTION + OWNER EXTRACTION ===== */
+// Parses every <meta> tag properly (any attribute order, any quote style)
+function parseMetaTags(pageHtml) {
+  const metas = {};
+  const tags = pageHtml.match(/<meta\b[^>]*>/gi) || [];
+  for (const tag of tags) {
+    const nameM = tag.match(/\b(?:name|property)\s*=\s*("([^"]*)"|'([^']*)'|([^\s>]+))/i);
+    const contentM = tag.match(/\bcontent\s*=\s*("([^"]*)"|'([^']*)'|([^\s>]+))/i);
+    if (!nameM) continue;
+    const name = (nameM[2] ?? nameM[3] ?? nameM[4] ?? '').toLowerCase();
+    const content = contentM ? (contentM[2] ?? contentM[3] ?? contentM[4] ?? '') : '';
+    if (name && !(name in metas)) metas[name] = content;
+  }
+  return metas;
+}
+
+// Grades only what can actually be verified. Returns null when the page
+// can't be judged fairly (error pages, blocked fetches) instead of guessing.
+function gradeSite(pageHtml, audit) {
+  if (!pageHtml || pageHtml.length < 400 || !/<(html|body|div|p|h1|main)/i.test(pageHtml)) return null;
+  if (audit && audit.status >= 400) return null;
+
+  const metas = parseMetaTags(pageHtml);
+  const textContent = pageHtml
+    .replace(/<script[\s\S]*?<\/script>/gi, ' ')
+    .replace(/<style[\s\S]*?<\/style>/gi, ' ')
+    .replace(/<[^>]+>/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim();
+
+  // JS-rendered shell: almost no real content. Don't hand out a fake F.
+  if (textContent.length < 200) {
+    return { grade: '?', issues: ['JavaScript-rendered site - could not fully audit from HTML'] };
+  }
+
   const issues = [];
-  if (/^http:\/\//i.test(url)) issues.push('No SSL');
-  if (!/viewport/i.test(pageHtml)) issues.push('Not mobile optimised');
-  const yr = pageHtml.match(/(?:\u00a9|&copy;|copyright)[^0-9]{0,20}(20\d\d)/i);
-  if (yr && +yr[1] < new Date().getFullYear() - 1) issues.push('Stale copyright (' + yr[1] + ')');
-  if (/wix\.com|parastorage/i.test(pageHtml)) issues.push('Wix builder');
-  if (/godaddy|secureserver/i.test(pageHtml)) issues.push('GoDaddy builder');
-  if (/weebly/i.test(pageHtml)) issues.push('Weebly builder');
-  if (!/<title>[^<]{3,}/i.test(pageHtml)) issues.push('Missing title tag');
-  if (!/<meta[^>]+name=["']description/i.test(pageHtml)) issues.push('No meta description');
-  const grade = ['A', 'B', 'C', 'D'][issues.length] || 'F';
+
+  // SSL: only claimed when actually tested by /api/audit
+  if (audit && audit.ssl) {
+    if (!audit.ssl.ok && audit.ssl.httpFallback) issues.push('No working SSL - https fails' + (audit.ssl.code ? ' (' + audit.ssl.code + ')' : ''));
+  }
+  if (audit && audit.ms > 3000) issues.push('Slow to load (' + (audit.ms / 1000).toFixed(1) + 's server response)');
+  if (audit && audit.redirectedToSocial) issues.push('Domain just redirects to a social page');
+
+  if (!metas['viewport']) issues.push('Not mobile optimised (no viewport meta)');
+
+  const titleM = pageHtml.match(/<title[^>]*>\s*([^<]{1,300})/i);
+  if (!titleM || titleM[1].trim().length < 3) issues.push('Missing page title');
+
+  const desc = metas['description'] || metas['og:description'] || '';
+  if (desc.trim().length < 20) issues.push('No meta description');
+
+  // Copyright: take the LATEST year mentioned near a copyright marker
+  const yearMatches = [...pageHtml.matchAll(/(?:\u00a9|&copy;|&#169;|copyright)[^<]{0,60}?((?:19|20)\d{2})/gi)].map(m => +m[1]);
+  if (yearMatches.length) {
+    const latest = Math.max(...yearMatches);
+    if (latest <= new Date().getFullYear() - 2) issues.push('Stale copyright (' + latest + ')');
+  }
+
+  // Builder fingerprints: high-confidence signals only
+  const gen = (metas['generator'] || '').toLowerCase();
+  if (gen.includes('wix') || /static\.parastorage\.com/i.test(pageHtml)) issues.push('Built on Wix');
+  if (gen.includes('godaddy') || /img1\.wsimg\.com/i.test(pageHtml)) issues.push('Built on GoDaddy builder');
+  if (gen.includes('weebly') || /weebly\.com\/uploads/i.test(pageHtml)) issues.push('Built on Weebly');
+
+  let grade = ['A', 'B', 'C', 'D'][issues.length] || 'F';
+  // a genuinely failing https connection caps the grade at C
+  if (issues.some(i => i.startsWith('No working SSL')) && (grade === 'A' || grade === 'B')) grade = 'C';
   return { grade, issues };
 }
 
@@ -2014,10 +2070,14 @@ function openPitch(id) {
     + '<div class="pitch-section"><h4>Key points</h4>' + p.points.map(pt => '<div class="pitch-point">' + pt + '</div>').join('') + '</div>'
     + '<div class="pitch-section"><h4>Best channel</h4><div class="pitch-channel">' + p.channel + '</div></div>'
     + '<div class="pitch-section"><h4>Opener (from your template)</h4><div class="pitch-msg">' + esc(fillTemplate(r)) + '</div></div>'
+    + ((r.website && r.temp !== 'warm')
+        ? '<div class="pitch-section"><h4>Deep audit</h4><div class="pitch-channel" id="psiResult">Run Google\'s own mobile test on their site - the score is hard pitch ammo they can verify themselves.</div></div>'
+        : '')
     + '<div class="pitch-actions">'
     + '<button class="btn btn-primary btn-sm" onclick="copyPitch(\'' + escAttr(r.id) + '\')">Copy full pitch</button>'
     + '<button class="btn btn-ghost btn-sm" onclick="copyMsg(\'' + escAttr(r.id) + '\')">Copy opener only</button>'
     + '<button class="btn btn-ghost btn-sm" onclick="copyBrief(\'' + escAttr(r.id) + '\')">Copy demo brief</button>'
+    + ((r.website && r.temp !== 'warm') ? '<button class="btn btn-ghost btn-sm" onclick="runDeepAudit(\'' + escAttr(r.id) + '\')">Google audit (15-30s)</button>' : '')
     + '</div>';
   document.getElementById('pitchModal').classList.add('open');
 }
@@ -2027,6 +2087,58 @@ function closePitch() {
 }
 
 document.addEventListener('keydown', e => { if (e.key === 'Escape') closePitch(); });
+
+/* ===== DEEP AUDIT (Google PageSpeed Insights) ===== */
+let psiRunning = false;
+
+async function runDeepAudit(id) {
+  if (psiRunning) return;
+  const r = findLead(id);
+  if (!r || !r.website) return;
+  const el = document.getElementById('psiResult');
+  if (!el) return;
+
+  psiRunning = true;
+  el.innerHTML = 'Running Google PageSpeed audit on ' + esc(r.website) + ' - takes 15-30 seconds...';
+
+  const key = keyInput.value.trim();
+  let url = 'https://www.googleapis.com/pagespeedonline/v5/runPagespeed?url=' + encodeURIComponent(r.website) + '&strategy=mobile&category=performance&category=seo';
+  if (key) url += '&key=' + key;
+
+  try {
+    const res = await fetch(url);
+    const data = await res.json();
+    if (data.error) {
+      el.innerHTML = 'Audit failed: ' + esc((data.error.message || '').slice(0, 160))
+        + (key ? '<br>Enable the <b>PageSpeed Insights API</b> on your Google Cloud project (same place as Places API) and retry.' : '<br>Tip: add your Google API key above for reliable runs.');
+      psiRunning = false;
+      return;
+    }
+    const lh = data.lighthouseResult || {};
+    const perf = Math.round(((lh.categories || {}).performance?.score || 0) * 100);
+    const seo = Math.round(((lh.categories || {}).seo?.score || 0) * 100);
+    const lcp = (lh.audits || {})['largest-contentful-paint']?.displayValue || '';
+
+    const verdict = perf < 50
+      ? 'Brutal. Lead with this number - "your site scores ' + perf + '/100 on Google\'s own mobile test."'
+      : perf < 80
+        ? 'Mediocre. Usable in the pitch alongside the visual rebuild.'
+        : 'Solid performance - pitch on design and content instead of speed.';
+
+    el.innerHTML = '<b>Google mobile scores:</b> performance <b>' + perf + '/100</b>, SEO <b>' + seo + '/100</b>' + (lcp ? ', main content loads in ' + esc(lcp) : '') + '.<br>' + verdict;
+
+    // persist onto the lead so the chip, exports and future pitches carry it
+    r.siteIssues = (r.siteIssues || []).filter(i => !/^Google mobile score/.test(i));
+    r.siteIssues.push('Google mobile score: ' + perf + '/100 (SEO ' + seo + '/100)');
+    if (perf < 50 && (r.siteGrade === 'A' || r.siteGrade === 'B' || r.siteGrade === '?' || !r.siteGrade)) r.siteGrade = 'C';
+    sbUpsertLeads([r]);
+    saveLeadsLocal([r]);
+    render();
+  } catch (e) {
+    el.innerHTML = 'Audit failed: ' + esc(e.message);
+  }
+  psiRunning = false;
+}
 
 function copyPitch(id) {
   const r = findLead(id);
@@ -2117,6 +2229,50 @@ function detectSocialFromWebsite(r) {
   }
 }
 
+// Probes the /api/audit endpoint once per session
+let auditAvailable = null;
+
+async function auditSite(url) {
+  if (auditAvailable === false || location.protocol.indexOf('http') !== 0) return null;
+  const controller = new AbortController();
+  const t = setTimeout(() => controller.abort(), 16000);
+  try {
+    const r = await fetch('/api/audit?url=' + encodeURIComponent(url), { signal: controller.signal });
+    if (r.status === 404 || r.status === 405) { auditAvailable = false; return null; }
+    if (!r.ok) return null;
+    auditAvailable = true;
+    return await r.json();
+  } catch (e) {
+    if (auditAvailable === null) auditAvailable = false;
+    return null;
+  } finally {
+    clearTimeout(t);
+  }
+}
+
+// Pulls emails, socials and owner names out of one page's HTML
+function harvestFromHtml(r, pageHtml, origin) {
+  let got = false;
+  if (!r.ownerName) {
+    const owner = extractOwner(pageHtml);
+    if (owner) { r.ownerName = owner; got = true; }
+  }
+  const found = extractSocials(pageHtml);
+  for (const [k, v] of Object.entries(found)) {
+    if (!r.socials[k]) { r.socials[k] = v; got = true; }
+  }
+  if (!r.email) {
+    const emails = extractEmails(pageHtml);
+    if (emails.length) {
+      const domain = origin.replace(/^https?:\/\/(www\.)?/, '');
+      const onDomain = emails.find(e => e.endsWith('@' + domain) || e.split('@')[1] === domain);
+      r.email = onDomain || emails[0];
+      got = true;
+    }
+  }
+  return got;
+}
+
 async function scanLead(r) {
   detectSocialFromWebsite(r);
   if (!r.website || r.temp === 'warm') return false;
@@ -2124,47 +2280,44 @@ async function scanLead(r) {
   let origin;
   try { origin = new URL(r.website).origin; } catch (e) { return false; }
 
-  const needEmail = !r.email;
-  const pages = [r.website, origin + '/contact', origin + '/contact-us', origin + '/about', origin + '/about-us', origin + '/team', origin + '/privacy-policy'];
-  const tried = new Set();
   let gotAnything = false;
 
-  for (const page of pages) {
-    if (tried.has(page)) continue;
-    tried.add(page);
-    const html = await fetchViaProxy(page);
-    if (!html) continue;
-
-    // homepage: grade the site + detect ad pixels
-    if (page === r.website && !r.siteGrade) {
-      const g = gradeSite(html, r.website);
-      r.siteGrade = g.grade;
-      r.siteIssues = g.issues;
-      r.runsAds = detectAds(html);
-      gotAnything = true;
+  // Homepage goes through the real audit endpoint (tested SSL, timing, redirects).
+  // Falls back to a plain proxy fetch, where unverifiable checks are simply skipped.
+  let homepageHtml = '';
+  const audit = await auditSite(r.website);
+  if (audit) {
+    homepageHtml = audit.html || '';
+    if (!r.siteGrade) {
+      const g = gradeSite(homepageHtml, audit);
+      if (g) { r.siteGrade = g.grade; r.siteIssues = g.issues; gotAnything = true; }
+      else if (audit.status >= 400 || !audit.ok) { r.siteIssues = ['Audit blocked (site returned ' + (audit.status || 'no response') + ')']; }
     }
-
-    if (!r.ownerName) {
-      const owner = extractOwner(html);
-      if (owner) { r.ownerName = owner; gotAnything = true; }
+  } else {
+    homepageHtml = await fetchViaProxy(r.website);
+    if (homepageHtml && !r.siteGrade) {
+      const g = gradeSite(homepageHtml, null);
+      if (g) { r.siteGrade = g.grade; r.siteIssues = g.issues; gotAnything = true; }
     }
+  }
 
-    const found = extractSocials(html);
-    for (const [k, v] of Object.entries(found)) {
-      if (!r.socials[k]) { r.socials[k] = v; gotAnything = true; }
+  if (homepageHtml) {
+    if (!r.runsAds) {
+      const ads = detectAds(homepageHtml);
+      if (ads) { r.runsAds = ads; gotAnything = true; }
     }
+    if (harvestFromHtml(r, homepageHtml, origin)) gotAnything = true;
+  }
 
-    if (needEmail && !r.email) {
-      const emails = extractEmails(html);
-      if (emails.length) {
-        const domain = origin.replace(/^https?:\/\/(www\.)?/, '');
-        const onDomain = emails.find(e => e.endsWith('@' + domain) || e.split('@')[1] === domain);
-        r.email = onDomain || emails[0];
-        gotAnything = true;
-      }
+  // Extra pages for whatever's still missing
+  if (!r.email || !Object.keys(r.socials).length || !r.ownerName) {
+    const pages = [origin + '/contact', origin + '/contact-us', origin + '/about', origin + '/about-us', origin + '/team', origin + '/privacy-policy'];
+    for (const page of pages) {
+      const pageHtml = await fetchViaProxy(page);
+      if (!pageHtml) continue;
+      if (harvestFromHtml(r, pageHtml, origin)) gotAnything = true;
+      if (r.email && Object.keys(r.socials).length) break;
     }
-
-    if (r.email && Object.keys(r.socials).length && r.siteGrade) break;
   }
   return gotAnything;
 }
@@ -2547,8 +2700,9 @@ function render() {
     // meta chips: site grade, ads, review activity, duplicate listings, owner
     const chips = [];
     if (r.siteGrade) {
-      const cls = (r.siteGrade === 'D' || r.siteGrade === 'F') ? 'bad' : (r.siteGrade === 'C' ? 'warn' : '');
-      chips.push('<span class="meta-chip ' + cls + '" title="' + escAttr((r.siteIssues || []).join(', ') || 'No issues found') + '">Site: ' + r.siteGrade + '</span>');
+      const cls = (r.siteGrade === 'D' || r.siteGrade === 'F') ? 'bad' : (r.siteGrade === 'C' ? 'warn' : (r.siteGrade === '?' ? '' : 'good'));
+      const label = r.siteGrade === '?' ? 'Site: n/a' : 'Site: ' + r.siteGrade;
+      chips.push('<span class="meta-chip ' + cls + '" title="' + escAttr((r.siteIssues || []).join(', ') || 'No issues found') + '">' + label + '</span>');
     }
     if (r.runsAds) chips.push('<span class="meta-chip info" title="Ad pixels detected - confirmed marketing budget">Ads: ' + esc(r.runsAds) + '</span>');
     if (r.lastReview) {

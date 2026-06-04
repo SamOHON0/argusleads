@@ -84,7 +84,7 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
 <title>Argus | SquareTwo</title>
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Cellipse cx='32' cy='32' rx='30' ry='19' fill='%23161b22' stroke='%233a4555' stroke-width='3'/%3E%3Ccircle cx='32' cy='32' r='9' fill='%234ade80'/%3E%3Ccircle cx='29.5' cy='29.5' r='3' fill='%23c9f7d9'/%3E%3C/svg%3E">
 <meta name="robots" content="noindex, nofollow">
@@ -1095,6 +1095,160 @@
     .selection-bar.open { bottom: 12px; border-radius: var(--radius-lg); }
   }
 
+
+  /* =========================================================
+     MOBILE LAYER 3 - app-grade phone layout
+     ========================================================= */
+  @media (max-width: 900px) {
+
+    body { padding: 12px 12px calc(96px + env(safe-area-inset-bottom)); }
+
+    /* ---- header: two stacked rows, app-like ---- */
+    .header { padding: 12px 14px; gap: 10px; }
+    .header h1 { font-size: 20px; }
+    .header p { display: none; }              /* tagline is noise on a phone */
+    .header-right { gap: 8px; }
+    .profile-group { flex: 1; }
+    .profile-btn { flex: 1; padding: 8px 0; text-align: center; }
+
+    /* ---- settings rows: compact, stacked ---- */
+    .key-section { padding: 12px; gap: 8px; }
+    .key-section input[type="password"], .key-section input[type="text"] { width: 100%; flex: none; }
+
+    /* ---- search: full-width action, scrolling chip rails ---- */
+    .search-section { padding: 14px; }
+    .search-grid > .btn { width: 100%; justify-content: center; }
+    .quick-row {
+      flex-wrap: nowrap;
+      overflow-x: auto;
+      -webkit-overflow-scrolling: touch;
+      scrollbar-width: none;
+      padding-bottom: 2px;
+      margin-left: -14px; margin-right: -14px;
+      padding-left: 14px; padding-right: 14px;
+    }
+    .quick-row::-webkit-scrollbar { display: none; }
+    .chip { flex-shrink: 0; }
+    .search-hint { font-size: 11px; }
+
+    /* ---- tabs: horizontal swipe rail ---- */
+    .tab-bar {
+      flex-wrap: nowrap;
+      overflow-x: auto;
+      -webkit-overflow-scrolling: touch;
+      scrollbar-width: none;
+      margin: 0 -12px 14px;
+      padding: 0 12px 4px;
+    }
+    .tab-bar::-webkit-scrollbar { display: none; }
+    .tab { flex-shrink: 0; }
+
+    /* ---- KPI strip: compact 2-col ---- */
+    .stats { gap: 8px; }
+    .stat { padding: 12px 14px; }
+    .stat .value { font-size: 22px; }
+
+    /* ---- toolbar: scrolling filter rail, stacked actions ---- */
+    .filter-group {
+      flex-wrap: nowrap;
+      overflow-x: auto;
+      -webkit-overflow-scrolling: touch;
+      scrollbar-width: none;
+      max-width: 100%;
+    }
+    .filter-group::-webkit-scrollbar { display: none; }
+    .filter-btn { flex-shrink: 0; }
+    .toolbar > div:last-child { width: 100%; }
+    .toolbar > div:last-child .btn { flex: 1; justify-content: center; }
+
+    /* ---- leads: real cards instead of table rows ---- */
+    .results {
+      background: transparent;
+      border: none;
+      box-shadow: none;
+      overflow: visible;
+      border-radius: 0;
+    }
+    .row, .results-head { min-width: 0; }
+    .row {
+      display: block;
+      background: var(--surface);
+      border: 1px solid var(--border) !important;
+      border-radius: var(--radius-lg);
+      margin-bottom: 10px;
+      padding: 14px 14px 12px 44px;
+      box-shadow: inset 0 1px 0 rgba(255,255,255,0.03), 0 6px 18px rgba(0,0,0,0.22);
+    }
+    .row:nth-child(even) { background: var(--surface); }
+    .row:hover { box-shadow: inset 0 1px 0 rgba(255,255,255,0.03), 0 6px 18px rgba(0,0,0,0.22); }
+    .row.is-selected {
+      border-color: var(--accent) !important;
+      box-shadow: 0 0 0 1px var(--accent), 0 6px 18px rgba(0,0,0,0.22);
+      background: color-mix(in srgb, var(--accent) 6%, var(--surface));
+    }
+    .row > div { margin-bottom: 7px; }
+    .row > div:last-child { margin-bottom: 0; }
+    /* score / rating / reviews sit on one stat line */
+    .row > div:nth-of-type(5),
+    .row > div:nth-of-type(6),
+    .row > div:nth-of-type(7) {
+      display: inline-block;
+      margin-right: 16px;
+      margin-bottom: 4px;
+    }
+    .row .row-check { top: 14px; left: 13px; }
+    .row-check input[type="checkbox"] { width: 20px; height: 20px; }
+    .row-check input[type="checkbox"]:checked::after { left: 6px; top: 2.5px; width: 5px; height: 10px; }
+    .biz-name { font-size: 16px; }
+    .act-btn { min-height: 34px; padding: 6px 12px; font-size: 12px; }
+    .lead-actions { gap: 7px; }
+
+    /* ---- modals become full-screen sheets ---- */
+    .modal-overlay { padding: 0; align-items: stretch; }
+    .modal-card {
+      max-width: 100%;
+      min-height: 100%;
+      border-radius: 0;
+      border-left: none;
+      border-right: none;
+      padding: 20px 16px calc(40px + env(safe-area-inset-bottom));
+      animation: sheetIn 0.22s cubic-bezier(0.2, 0, 0, 1);
+    }
+    .modal-close { top: 12px; right: 12px; font-size: 26px; padding: 8px 12px; }
+    .pitch-actions .btn { flex: 1; justify-content: center; min-height: 44px; }
+    .gem-opt { padding: 14px; }
+
+    /* ---- floating bars: clear of each other and the home bar ---- */
+    .selection-bar.open {
+      bottom: calc(10px + env(safe-area-inset-bottom));
+      left: 10px; right: 10px;
+      transform: none;
+      width: auto;
+      justify-content: flex-start;
+    }
+    .status-bar {
+      bottom: calc(74px + env(safe-area-inset-bottom));
+      left: 12px; right: 12px;
+      width: auto;
+    }
+
+    /* ---- panels ---- */
+    .tpl-panel { padding: 14px; }
+    .legend { font-size: 11px; }
+  }
+
+  @keyframes sheetIn {
+    from { opacity: 0; transform: translateY(24px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+
+  /* very small phones */
+  @media (max-width: 380px) {
+    .stats { grid-template-columns: 1fr 1fr; }
+    .stat .value { font-size: 19px; }
+    .header h1 { font-size: 18px; }
+  }
+
 </style>
 </head>
 <body>
@@ -1363,7 +1517,9 @@ const SOCIAL_PLATFORMS = {
   youtube: { label: 'YT', hosts: ['youtube.com', 'youtu.be'] },
   x: { label: 'X', hosts: ['twitter.com', 'x.com'] },
   linktree: { label: 'Linktree', hosts: ['linktr.ee'] },
-  whatsapp: { label: 'WA', hosts: ['wa.me', 'api.whatsapp.com'] }
+  whatsapp: { label: 'WA', hosts: ['wa.me', 'api.whatsapp.com', 'whatsapp.com'] },
+  gbusiness: { label: 'Google site', hosts: ['business.site'] },
+  gsites: { label: 'Google site', hosts: ['sites.google.com'] }
 };
 
 /* ===== PROFILE ===== */
@@ -1573,7 +1729,7 @@ async function sbUpdateLead(id, fields) {
 }
 
 function rowToLead(row) {
-  return {
+  const lead = {
     id: row.id,
     name: row.name || 'Unknown',
     address: row.address || '',
@@ -1594,6 +1750,8 @@ function rowToLead(row) {
     lastReview: row.last_review_at || null,
     query: row.query || ''
   };
+  detectSocialFromWebsite(lead);
+  return lead;
 }
 
 async function fetchCloudLeads() {
@@ -2989,7 +3147,7 @@ async function searchOneLocation(query, location, apiKey, maxResults, seenIds, o
       if (seenIds.has(p.id)) continue;
       seenIds.add(p.id);
       added++;
-      allResults.push({
+      const newLead = {
         id: p.id,
         name: p.displayName?.text || 'Unknown',
         address: p.formattedAddress || '',
@@ -3009,7 +3167,9 @@ async function searchOneLocation(query, location, apiKey, maxResults, seenIds, o
         mapsUrl: p.googleMapsUri || '',
         temp: classify(p.websiteUri),
         searchLocation: location
-      });
+      };
+      detectSocialFromWebsite(newLead);
+      allResults.push(newLead);
     }
 
     pageToken = data.nextPageToken || null;

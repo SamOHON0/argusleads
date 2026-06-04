@@ -686,10 +686,12 @@
   .export-menu .sub { font-size: 11px; color: var(--text-dim); display: block; margin-top: 2px; }
 
   /* ===== RESULTS ===== */
-  .results { display: none; background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-lg); overflow: hidden; }
+  .results { display: none; background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-lg); overflow-x: auto; overflow-y: hidden; }
+  .results-head, .row { min-width: 980px; }
+  @media (max-width: 900px) { .results-head, .row { min-width: 0; } }
   .results-head, .row {
     display: grid;
-    grid-template-columns: 26px 2fr 1.6fr 1fr 58px 58px 68px 215px;
+    grid-template-columns: 26px 2fr 1.4fr 0.9fr 54px 54px 62px 252px;
     gap: 12px;
     padding: 12px 16px;
     align-items: center;
@@ -706,11 +708,12 @@
   .results-head .sortable { cursor: pointer; user-select: none; }
   .results-head .sortable:hover { color: var(--text); }
   .row { border-bottom: 1px solid var(--border); font-size: 14px; transition: background 0.1s; }
+  .row:nth-child(even) { background: rgba(255,255,255,0.018); }
   .row:last-child { border-bottom: none; }
   .row:hover { background: var(--surface-2); }
   .row.is-contacted { opacity: 0.45; }
   .row.is-skipped { opacity: 0.3; }
-  .biz-name { font-weight: 500; line-height: 1.4; display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+  .biz-name { font-weight: 600; font-size: 15px; line-height: 1.4; display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
   .biz-links { display: flex; gap: 10px; margin-top: 4px; }
   .biz-link { font-size: 12px; color: var(--accent); text-decoration: none; }
   .biz-link.dim { color: var(--text-dim); }
@@ -724,7 +727,7 @@
   .tag-warm { background: rgba(251,191,36,0.1); color: var(--warm); border: 1px solid rgba(251,191,36,0.3); }
   .tag-cold { background: rgba(96,165,250,0.1); color: var(--cold); border: 1px solid rgba(96,165,250,0.3); }
   a.tag { text-decoration: none; }
-  .lead-actions { display: flex; gap: 6px; align-items: center; }
+  .lead-actions { display: flex; gap: 6px; align-items: center; flex-wrap: wrap; }
   .act-btn {
     font-size: 11px;
     padding: 5px 10px;

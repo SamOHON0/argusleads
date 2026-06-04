@@ -375,6 +375,52 @@
   .gate-footer a:hover { color: var(--text); }
   @media (max-width: 600px) { .profile-avatar { width: 84px; height: 84px; font-size: 32px; } .profile-tiles { gap: 14px; } }
 
+  /* ===== AUTOPITCH MODAL ===== */
+  .modal-overlay {
+    display: none; position: fixed; inset: 0; z-index: 500;
+    background: rgba(8, 11, 15, 0.78);
+    align-items: flex-start; justify-content: center;
+    padding: 6vh 16px 16px; overflow-y: auto;
+  }
+  .modal-overlay.open { display: flex; }
+  .modal-card {
+    background: var(--surface); border: 1px solid var(--border-light);
+    border-radius: var(--radius-lg); max-width: 640px; width: 100%;
+    padding: 24px; position: relative;
+    box-shadow: 0 20px 60px rgba(0,0,0,0.5);
+  }
+  .modal-close {
+    position: absolute; top: 14px; right: 14px;
+    background: transparent; border: none; color: var(--text-dim);
+    font-size: 20px; cursor: pointer; line-height: 1; padding: 4px 8px;
+  }
+  .modal-close:hover { color: var(--text); }
+  .pitch-title { font-family: 'Sora', sans-serif; font-size: 18px; font-weight: 700; margin-bottom: 2px; padding-right: 30px; }
+  .pitch-sub { font-size: 12px; color: var(--text-dim); margin-bottom: 16px; }
+  .pitch-section { margin-bottom: 16px; }
+  .pitch-section h4 {
+    font-size: 11px; font-weight: 600; color: var(--text-dim);
+    text-transform: uppercase; letter-spacing: 0.6px; margin-bottom: 7px;
+  }
+  .pitch-angle {
+    background: var(--surface-2); border-left: 3px solid var(--accent);
+    border-radius: 0 var(--radius) var(--radius) 0;
+    padding: 12px 14px; font-size: 14px; line-height: 1.55;
+  }
+  .pitch-point {
+    display: flex; gap: 9px; font-size: 13.5px; line-height: 1.5;
+    padding: 5px 0; color: var(--text);
+  }
+  .pitch-point::before { content: '\2192'; color: var(--accent); flex-shrink: 0; }
+  .pitch-channel { font-size: 13px; color: var(--text); }
+  .pitch-channel b { color: var(--accent); }
+  .pitch-msg {
+    background: var(--bg); border: 1px solid var(--border); border-radius: var(--radius);
+    padding: 12px 14px; font-size: 13px; line-height: 1.55; color: var(--text-dim);
+    font-style: italic;
+  }
+  .pitch-actions { display: flex; gap: 8px; margin-top: 18px; flex-wrap: wrap; }
+
   /* ===== ARGUS BRANDING ===== */
   .gate-logo { display: flex; align-items: center; gap: 12px; }
   .logo-eye {
@@ -748,6 +794,11 @@
 </style>
 </head>
 <body>
+
+<!-- ===== AUTOPITCH MODAL ===== -->
+<div class="modal-overlay" id="pitchModal" onclick="if(event.target===this)closePitch()">
+  <div class="modal-card" id="pitchCard"></div>
+</div>
 
 <!-- ===== LOGIN GATE ===== -->
 <div class="gate" id="loginGate">
@@ -1893,6 +1944,108 @@ function fillTemplate(r) {
 
 function findLead(id) { return allResults.find(r => r.id === id); }
 
+/* ===== AUTOPITCH ===== */
+function buildPitch(r) {
+  const points = [];
+  const town = r.searchLocation || 'their area';
+  const reviews = r.rating ? r.rating + ' stars across ' + r.reviewCount + ' reviews' : null;
+
+  // channel recommendation
+  let channel;
+  if (r.phone && normalizeIrishPhone(r.phone).startsWith('3538')) channel = '<b>WhatsApp or call</b> - mobile number on the listing, and operators like this answer their phone';
+  else if (r.email) channel = '<b>Email</b> (' + esc(r.email) + ') - then follow up with a call if no reply in 3 days';
+  else if (r.temp === 'warm') channel = '<b>Message their social page</b> - it is their main channel, they check it';
+  else if (r.phone) channel = '<b>Call the landline</b> - ask for the owner' + (r.ownerName ? ' (' + esc(r.ownerName.split(' ')[0]) + ')' : '');
+  else channel = '<b>No direct contact found</b> - run a Scan, check the Google link, or drop in if local';
+
+  // temp-specific core points
+  if (r.temp === 'hot') {
+    if (reviews) points.push(reviews + ' and not one of those customers can find them with a Google search - the reviews are doing marketing work that goes nowhere.');
+    points.push('Anyone searching "' + esc((r.query || 'their service')) + ' ' + esc(town) + '" right now lands on a competitor with a website.');
+    points.push('People check a business out online before calling. No site means a chunk of would-be customers quietly move on.');
+    points.push('Monthly plan, no big upfront cost - frame it as less than a tank of diesel a month.');
+  } else if (r.temp === 'warm') {
+    points.push('Their social page is doing real work' + (reviews ? ' (' + reviews + ')' : '') + ', but Google searches do not show Facebook pages well - that traffic goes to competitors with sites.');
+    points.push('They are renting their audience from an algorithm. A site is the one channel they own.');
+    points.push('Easy build: pull the photos, branding and reviews they already have on social - demo almost makes itself.');
+    points.push('Position the site as a hub their socials feed into, not a replacement for what is working.');
+  } else {
+    const issues = r.siteIssues || [];
+    if (issues.length) points.push('Their current site has real problems to point at: ' + esc(issues.join(', ').toLowerCase()) + '. Specific beats generic in the pitch.');
+    if (issues.some(i => /mobile/i.test(i))) points.push('Most local searches happen on phones - a site that does not work on mobile is turning away the majority of visitors.');
+    if (!issues.length) points.push('Site exists but a visibly sharper rebuild is the pitch - lead with the demo, let the difference do the talking.');
+    points.push('Monthly plan includes hosting and updates - they never deal with a web guy who vanishes again.');
+  }
+
+  // dynamic extras
+  if (r.runsAds) points.push('They run ' + esc(r.runsAds) + ' ads - confirmed marketing budget, and ' + (r.temp === 'cold' ? 'every click lands on that weak site. "You are paying for traffic and losing it at the door" is the line.' : 'they are spending to be found while their web presence undersells them.'));
+  if (isReviewRecent(r.lastReview)) points.push('Reviews in the last few months - they are busy right now, which means money coming in and pain worth fixing.');
+  else if (r.lastReview) points.push('No recent reviews - angle the pitch around getting them busy again rather than handling more work.');
+
+  const dupKey = normalizeIrishPhone(r.phone);
+  // dup detection vs current dataset
+  let dupCount = 0;
+  if (dupKey) for (const x of allResults) { if (normalizeIrishPhone(x.phone) === dupKey) dupCount++; }
+  if (dupCount > 1) points.push('Same phone number on ' + dupCount + ' listings - one owner, multiple businesses. Pitch once, sell ' + dupCount + ' sites.');
+
+  // the angle
+  let angle;
+  if (r.temp === 'hot') angle = 'Demo-first. Build the demo before the call, open with: "I built ' + esc(r.name) + ' a website - want to see it?" Curiosity does the rest. The reviews prove the business is good; the site just has to match it.';
+  else if (r.temp === 'warm') angle = 'Compliment, then gap. Their social presence shows they care about marketing - the pitch is that Google is the one place it is not working for them, and the demo (built from their own content) closes that gap.';
+  else angle = 'Side-by-side. Their site next to your demo - no argument needed, just "here is yours, here is what it could be." ' + (r.runsAds ? 'Lead with the wasted ad spend.' : 'Lead with the most visible flaw.');
+
+  return { points, angle, channel };
+}
+
+function openPitch(id) {
+  const r = findLead(id);
+  if (!r) return;
+  const p = buildPitch(r);
+  const score = computeScore(r);
+  const card = document.getElementById('pitchCard');
+  card.innerHTML =
+    '<button class="modal-close" onclick="closePitch()" aria-label="Close">&times;</button>'
+    + '<div class="pitch-title">' + esc(r.name) + '</div>'
+    + '<div class="pitch-sub">' + r.temp.toUpperCase() + ' lead &middot; score ' + score + (r.searchLocation ? ' &middot; ' + esc(r.searchLocation) : '') + (r.ownerName ? ' &middot; owner: ' + esc(r.ownerName) : '') + '</div>'
+    + '<div class="pitch-section"><h4>The angle</h4><div class="pitch-angle">' + p.angle + '</div></div>'
+    + '<div class="pitch-section"><h4>Key points</h4>' + p.points.map(pt => '<div class="pitch-point">' + pt + '</div>').join('') + '</div>'
+    + '<div class="pitch-section"><h4>Best channel</h4><div class="pitch-channel">' + p.channel + '</div></div>'
+    + '<div class="pitch-section"><h4>Opener (from your template)</h4><div class="pitch-msg">' + esc(fillTemplate(r)) + '</div></div>'
+    + '<div class="pitch-actions">'
+    + '<button class="btn btn-primary btn-sm" onclick="copyPitch(\'' + escAttr(r.id) + '\')">Copy full pitch</button>'
+    + '<button class="btn btn-ghost btn-sm" onclick="copyMsg(\'' + escAttr(r.id) + '\')">Copy opener only</button>'
+    + '<button class="btn btn-ghost btn-sm" onclick="copyBrief(\'' + escAttr(r.id) + '\')">Copy demo brief</button>'
+    + '</div>';
+  document.getElementById('pitchModal').classList.add('open');
+}
+
+function closePitch() {
+  document.getElementById('pitchModal').classList.remove('open');
+}
+
+document.addEventListener('keydown', e => { if (e.key === 'Escape') closePitch(); });
+
+function copyPitch(id) {
+  const r = findLead(id);
+  if (!r) return;
+  const p = buildPitch(r);
+  const strip = s => s.replace(/<[^>]+>/g, '');
+  const text = [
+    'PITCH: ' + r.name + ' (' + r.temp.toUpperCase() + ', score ' + computeScore(r) + ')',
+    '',
+    'ANGLE: ' + strip(p.angle),
+    '',
+    'KEY POINTS:',
+    ...p.points.map(pt => '- ' + strip(pt)),
+    '',
+    'CHANNEL: ' + strip(p.channel),
+    '',
+    'OPENER:',
+    fillTemplate(r)
+  ].join('\n');
+  copyText(text, 'Pitch copied for ' + r.name);
+}
+
 async function copyText(text, okMsg) {
   try {
     await navigator.clipboard.writeText(text);
@@ -2425,6 +2578,7 @@ function render() {
         + (wa ? '<a class="act-btn wa-btn" href="' + wa + '" target="_blank" rel="noopener" title="Opens WhatsApp to this lead with your outreach message pre-filled">' + ICONS.wa + 'WhatsApp</a>' : '')
         + '<button class="act-btn" onclick="copyMsg(\'' + escAttr(r.id) + '\')" title="Copies your outreach message (filled in for this lead) to paste into email, DMs or texts">' + ICONS.copy + 'Copy message</button>'
         + '<button class="act-btn" onclick="copyBrief(\'' + escAttr(r.id) + '\')" title="Copies a demo website brief for this business - paste into Cursor or Claude to build their demo site">' + ICONS.brief + 'Demo brief</button>'
+        + '<button class="act-btn" onclick="openPitch(\'' + escAttr(r.id) + '\')" title="Pops up the key talking points and angle for pitching this exact business">' + ICONS.pitch + 'Autopitch</button>'
         + '</div>'
         + '<input class="note-input" id="note-' + escAttr(r.id) + '" placeholder="Add a note..." value="' + escAttr(p.note || '') + '" onchange="setLeadNote(\'' + escAttr(r.id) + '\', this.value)">'
       + '</div>'
@@ -2689,7 +2843,8 @@ const ICONS = {
   brief: '<svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><path d="M14 2v6h6M16 13H8M16 17H8"/></svg>',
   scan: '<svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>',
   tpl: '<svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z"/></svg>',
-  download: '<svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4M7 10l5 5 5-5M12 15V3"/></svg>'
+  download: '<svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4M7 10l5 5 5-5M12 15V3"/></svg>',
+  pitch: '<svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M13 2L3 14h7l-1 8 10-12h-7l1-8z"/></svg>'
 };
 
 /* ===== AUTH GATE ===== */

@@ -61,6 +61,18 @@
     alter table lists enable row level security;
     create policy "allow anon lists" on lists for all using (true) with check (true);
 
+    create table searches (
+      id uuid primary key default gen_random_uuid(),
+      query text,
+      locations text,
+      total int,
+      new_finds int,
+      searched_by text,
+      created_at timestamptz default now()
+    );
+    alter table searches enable row level security;
+    create policy "allow anon searches" on searches for all using (true) with check (true);
+
   3. Project Settings > API > copy the Project URL and the anon public key
   4. Paste both into the cloud sync bar in the tool. Done.
 
@@ -287,6 +299,24 @@
   }
   .tpl-grid textarea:focus { outline: none; border-color: var(--accent-dark); }
   @media (max-width: 900px) { .tpl-grid { grid-template-columns: 1fr; } }
+
+  .hist-row {
+    display: grid;
+    grid-template-columns: 90px 60px 1fr 90px 90px 90px;
+    gap: 10px; align-items: center;
+    padding: 9px 4px; border-bottom: 1px solid var(--border);
+    font-size: 13px;
+  }
+  .hist-row:last-child { border-bottom: none; }
+  .hist-row.hist-head { font-size: 11px; font-weight: 600; color: var(--text-dim); text-transform: uppercase; letter-spacing: 0.5px; }
+  .hist-row .h-query { font-weight: 500; }
+  .hist-row .h-dim { color: var(--text-dim); font-size: 12px; }
+  .hist-row .h-new { color: var(--accent); font-weight: 600; }
+  .hist-row .h-zero { color: var(--text-dim); }
+  @media (max-width: 700px) {
+    .hist-row { grid-template-columns: 1fr 80px; }
+    .hist-row .h-hide-m { display: none; }
+  }
 
   /* ===== AUTH SCREENS ===== */
   .gate {
@@ -768,6 +798,8 @@
         <button class="profile-btn" data-profile="Jack" onclick="setProfile('Jack')">Jack</button>
         <button class="profile-btn active" data-profile="Guest" onclick="setProfile('Guest')">Guest</button>
       </div>
+      <button class="btn btn-ghost btn-sm" onclick="document.getElementById('csvFile').click()" title="Import leads from a CSV file (e.g. scraped lists, old exports)">Import CSV</button>
+      <input type="file" id="csvFile" accept=".csv,text/csv" style="display:none" onchange="handleCsvFile(this)">
       <button class="btn btn-ghost btn-sm" onclick="loadDemo()">View example results</button>
       <div class="usage-pill">API calls this month: <strong id="usageCount">0</strong> / 1,000 free</div>
     </div>
@@ -826,6 +858,7 @@
     <div class="quick-row" id="historyRow" style="display:none;">
       <span>Recent:</span>
       <span id="historyChips" style="display:contents;"></span>
+      <button class="chip" onclick="toggleHistoryPanel()" title="Every search you and Jack have run, with result counts">Full history</button>
     </div>
   </div>
 
@@ -884,6 +917,9 @@
       <div class="mini-filter">
         <label><input type="checkbox" id="hideDone" onchange="render()" checked> Hide contacted/skipped</label>
       </div>
+      <div class="mini-filter">
+        <label title="Only show leads this search found for the first time - hides everything already in your database"><input type="checkbox" id="newOnly" onchange="render()"> New finds only</label>
+      </div>
       <button class="btn btn-ghost btn-sm mobile-only" onclick="toggleSelectAll()">Select all</button>
       <span class="result-count" id="resultCount"></span>
     </div>
@@ -901,6 +937,22 @@
         </div>
       </div>
     </div>
+  </div>
+
+  <!-- ===== SEARCH HISTORY ===== -->
+  <div class="tpl-panel" id="historyPanel">
+    <h3>Search history</h3>
+    <div class="tpl-hint">Every search run on this database, newest first. Check here before searching - if a combo was run recently with few new finds, skip it and save the quota.</div>
+    <div id="historyTable"></div>
+  </div>
+
+  <!-- ===== CSV IMPORT ===== -->
+  <div class="tpl-panel" id="importPanel">
+    <h3>Import CSV</h3>
+    <div class="tpl-hint" id="importInfo"></div>
+    <div class="tpl-grid" style="grid-template-columns: repeat(3, 1fr);" id="importMapping"></div>
+    <button class="btn btn-primary btn-sm" onclick="doImport()">Import leads</button>
+    <button class="btn btn-ghost btn-sm" onclick="cancelImport()">Cancel</button>
   </div>
 
   <!-- ===== TEMPLATES ===== -->
@@ -1182,6 +1234,7 @@ function localAllLeads() {
 
 /* ===== VIEWS + LISTS ENGINE ===== */
 let viewMode = 'search'; // 'search' | 'all' | a list id
+let lastSearchNewCount = null;
 let lastSearchResults = [];
 let lists = []; // [{id, name, leadIds: [...]}]
 let selectedIds = new Set();
@@ -1495,29 +1548,94 @@ function renderUsage() {
   document.getElementById('usageCount').textContent = u[monthKey()] || 0;
 }
 
-/* ===== SEARCH HISTORY ===== */
-function pushHistory(query, location) {
+/* ===== SEARCH HISTORY (with result counts, cloud-synced when available) ===== */
+function logSearch(query, location, total, fresh) {
+  // local
   let h = store.get('st_history', []);
   h = h.filter(e => !(e.q === query && e.l === location));
-  h.unshift({ q: query, l: location });
-  h = h.slice(0, 6);
+  h.unshift({ q: query, l: location, t: Date.now(), total: total, fresh: fresh, by: currentProfile });
+  h = h.slice(0, 30);
   store.set('st_history', h);
   renderHistory();
+  // cloud (fire and forget; silently skipped if searches table not set up)
+  if (sbConfigured()) {
+    fetch(sbUrlInput.value.trim().replace(/\/$/, '') + '/rest/v1/searches', {
+      method: 'POST',
+      headers: { ...sbHeaders(), 'Prefer': 'return=minimal' },
+      body: JSON.stringify([{ query: query, locations: location, total: total, new_finds: fresh, searched_by: currentProfile }])
+    }).catch(() => {});
+  }
 }
+
 function renderHistory() {
   const h = store.get('st_history', []);
   const row = document.getElementById('historyRow');
   if (!h.length) { row.style.display = 'none'; return; }
   row.style.display = 'flex';
-  document.getElementById('historyChips').innerHTML = h.map((e, i) =>
-    '<button class="chip" onclick="loadHistory(' + i + ')">' + esc(e.q) + ' · ' + esc(e.l.length > 30 ? e.l.slice(0, 30) + '...' : e.l) + '</button>'
-  ).join(' ');
+  document.getElementById('historyChips').innerHTML = h.slice(0, 5).map((e, i) => {
+    const counts = (e.total !== undefined) ? ' · ' + e.total + (e.fresh !== undefined ? ' (' + e.fresh + ' new)' : '') : '';
+    return '<button class="chip" onclick="loadHistory(' + i + ')" title="Run this search again">' + esc(e.q) + ' · ' + esc(e.l.length > 24 ? e.l.slice(0, 24) + '...' : e.l) + counts + '</button>';
+  }).join(' ');
 }
+
 function loadHistory(i) {
   const h = store.get('st_history', []);
   if (!h[i]) return;
   document.getElementById('query').value = h[i].q;
   document.getElementById('location').value = h[i].l;
+  runSearch();
+}
+
+let historyCache = [];
+
+async function toggleHistoryPanel() {
+  const panel = document.getElementById('historyPanel');
+  if (panel.classList.contains('open')) { panel.classList.remove('open'); return; }
+
+  historyCache = [];
+  if (sbConfigured()) {
+    try {
+      const res = await fetch(sbUrlInput.value.trim().replace(/\/$/, '') + '/rest/v1/searches?select=*&order=created_at.desc&limit=150', { headers: sbHeaders() });
+      if (res.ok) {
+        const rows = await res.json();
+        historyCache = rows.map(r => ({ q: r.query, l: r.locations, t: new Date(r.created_at).getTime(), total: r.total, fresh: r.new_finds, by: r.searched_by }));
+      }
+    } catch (e) {}
+  }
+  if (!historyCache.length) historyCache = store.get('st_history', []);
+
+  const el = document.getElementById('historyTable');
+  if (!historyCache.length) {
+    el.innerHTML = '<div class="tpl-hint">No searches logged yet. History starts recording from your next search. (For shared Sam+Jack history, run the "searches" table SQL from the top of this file.)</div>';
+  } else {
+    let h = '<div class="hist-row hist-head"><span>When</span><span class="h-hide-m">Who</span><span>Search</span><span class="h-hide-m">Results</span><span class="h-hide-m">New finds</span><span></span></div>';
+    for (let i = 0; i < historyCache.length; i++) {
+      const e = historyCache[i];
+      const d = e.t ? new Date(e.t) : null;
+      const when = d ? d.toLocaleDateString('en-IE', { day: 'numeric', month: 'short' }) : '-';
+      const fresh = (e.fresh === undefined || e.fresh === null) ? '-'
+        : (e.fresh === 0 ? '<span class="h-zero">0 - skip this</span>' : '<span class="h-new">' + e.fresh + '</span>');
+      h += '<div class="hist-row">'
+        + '<span class="h-dim">' + when + '</span>'
+        + '<span class="h-dim h-hide-m">' + esc(e.by || '-') + '</span>'
+        + '<span class="h-query">' + esc(e.q) + ' <span class="h-dim">in ' + esc(e.l) + '</span></span>'
+        + '<span class="h-dim h-hide-m">' + (e.total ?? '-') + '</span>'
+        + '<span class="h-hide-m">' + fresh + '</span>'
+        + '<span><button class="act-btn" onclick="rerunHistory(' + i + ')">Run again</button></span>'
+        + '</div>';
+    }
+    el.innerHTML = h;
+  }
+  panel.classList.add('open');
+  panel.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+}
+
+function rerunHistory(i) {
+  const e = historyCache[i];
+  if (!e) return;
+  document.getElementById('historyPanel').classList.remove('open');
+  document.getElementById('query').value = e.q;
+  document.getElementById('location').value = e.l;
   runSearch();
 }
 
@@ -1997,6 +2115,19 @@ async function searchOneLocation(query, location, apiKey, maxResults, seenIds, o
   } while (pageToken && added < maxResults);
 }
 
+async function fetchKnownIds() {
+  try {
+    if (sbConfigured()) {
+      const res = await fetch(sbEndpoint() + '?select=id&limit=10000', { headers: sbHeaders() });
+      if (res.ok) {
+        const rows = await res.json();
+        return new Set(rows.map(r => r.id));
+      }
+    }
+  } catch (e) {}
+  return new Set(Object.keys(store.get('st_all_leads', {})));
+}
+
 async function runSearch() {
   const apiKey = keyInput.value.trim();
   const query = document.getElementById('query').value.trim();
@@ -2030,7 +2161,17 @@ async function runSearch() {
       if (done < locations.length) await new Promise(r => setTimeout(r, 800));
     }
 
-    pushHistory(query, locationRaw);
+    // tag which results are first-time finds vs already in the database
+    setStatus(true, 'Checking against your existing leads...', 95);
+    const known = await fetchKnownIds();
+    let newCount = 0;
+    for (const r of allResults) {
+      r.isNew = !known.has(r.id);
+      if (r.isNew) newCount++;
+    }
+    lastSearchNewCount = newCount;
+
+    logSearch(query, locationRaw, allResults.length, newCount);
     lastSearchResults = allResults;
     viewMode = 'search';
     clearSelection();
@@ -2088,6 +2229,7 @@ function getFiltered() {
     if (r.reviewCount < minReviews) return false;
     if (phoneOnly && !r.phone) return false;
     if (hideDone && pipeline[r.id]?.status) return false;
+    if (document.getElementById('newOnly').checked && r.isNew === false) return false;
     return true;
   });
 
@@ -2115,7 +2257,11 @@ function render() {
   const el = document.getElementById('results');
   const pipeline = getPipeline();
 
-  document.getElementById('resultCount').textContent = filtered.length + ' shown';
+  let countText = filtered.length + ' shown';
+  if (viewMode === 'search' && lastSearchNewCount !== null && allResults.length && allResults[0].isNew !== undefined) {
+    countText += ' · ' + lastSearchNewCount + ' new find' + (lastSearchNewCount === 1 ? '' : 's') + ' this search';
+  }
+  document.getElementById('resultCount').textContent = countText;
 
   if (!filtered.length) {
     el.innerHTML = '<div class="empty">No results match the current filters.</div>';
@@ -2188,6 +2334,8 @@ function render() {
         ? '<span class="meta-chip good" title="Last review ' + esc(r.lastReview.slice(0, 10)) + '">Active</span>'
         : '<span class="meta-chip" title="Last review ' + esc(r.lastReview.slice(0, 10)) + '">Quiet</span>');
     }
+    if (r.isNew === true) chips.unshift('<span class="meta-chip good" title="First time this lead has appeared in your database">NEW</span>');
+    else if (r.isNew === false) chips.unshift('<span class="meta-chip" title="Already in your database from a previous search or import">Seen before</span>');
     const dupKey = normalizeIrishPhone(r.phone);
     if (dupKey && dupCounts[dupKey] > 1) chips.push('<span class="meta-chip warn" title="Same phone number on multiple listings - likely one owner, bigger deal">&times;' + dupCounts[dupKey] + ' listings</span>');
     chips.push('<span class="meta-chip clickable" onclick="editOwner(\'' + escAttr(r.id) + '\')" title="Click to edit owner/contact name">' + (r.ownerName ? 'Owner: ' + esc(r.ownerName) : '+ owner') + '</span>');
@@ -2281,6 +2429,165 @@ function exportCSV(format, scope) {
   a.download = (scope === 'all' ? 'all-leads' : q + '-' + format) + '.csv';
   a.click();
   URL.revokeObjectURL(url);
+}
+
+/* ===== CSV IMPORT ===== */
+let csvRows = null;
+let csvHeaders = [];
+let csvFileName = '';
+
+function parseCSV(text) {
+  const rows = [];
+  let row = [], cur = '', inQ = false;
+  for (let i = 0; i < text.length; i++) {
+    const c = text[i];
+    if (inQ) {
+      if (c === '"') {
+        if (text[i + 1] === '"') { cur += '"'; i++; }
+        else inQ = false;
+      } else cur += c;
+    } else if (c === '"') inQ = true;
+    else if (c === ',') { row.push(cur); cur = ''; }
+    else if (c === '\n' || c === '\r') {
+      if (c === '\r' && text[i + 1] === '\n') i++;
+      row.push(cur); cur = '';
+      if (row.length > 1 || row[0] !== '') rows.push(row);
+      row = [];
+    } else cur += c;
+  }
+  if (cur !== '' || row.length) { row.push(cur); rows.push(row); }
+  return rows;
+}
+
+const IMPORT_FIELDS = [
+  { key: 'name', label: 'Business name (required)', guesses: ['name', 'business', 'company', 'companyname', 'organization', 'organisation', 'firm'] },
+  { key: 'phone', label: 'Phone', guesses: ['phone', 'mobile', 'tel', 'telephone', 'number'] },
+  { key: 'email', label: 'Email', guesses: ['email', 'mail', 'e-mail'] },
+  { key: 'website', label: 'Website', guesses: ['website', 'url', 'site', 'web', 'domain'] },
+  { key: 'address', label: 'Address', guesses: ['address', 'location', 'addr', 'street'] },
+  { key: 'town', label: 'Town / area', guesses: ['town', 'city', 'county', 'area', 'region', 'locality'] },
+  { key: 'owner', label: 'Owner / contact name', guesses: ['owner', 'contact', 'firstname', 'first name', 'person'] }
+];
+
+function handleCsvFile(input) {
+  const file = input.files[0];
+  if (!file) return;
+  csvFileName = file.name;
+  const reader = new FileReader();
+  reader.onload = () => {
+    const rows = parseCSV(reader.result);
+    if (rows.length < 2) { showError('That CSV has no data rows.'); input.value = ''; return; }
+    csvHeaders = rows[0].map(h => h.trim());
+    csvRows = rows.slice(1).filter(r => r.some(c => c && c.trim()));
+    openImportPanel();
+  };
+  reader.onerror = () => showError('Could not read that file.');
+  reader.readAsText(file);
+  input.value = '';
+}
+
+function guessColumn(field) {
+  const lower = csvHeaders.map(h => h.toLowerCase().replace(/[^a-z]/g, ''));
+  for (const g of field.guesses) {
+    const target = g.replace(/[^a-z]/g, '');
+    let i = lower.findIndex(h => h === target);
+    if (i === -1) i = lower.findIndex(h => h.includes(target));
+    if (i !== -1) return i;
+  }
+  return -1;
+}
+
+function openImportPanel() {
+  document.getElementById('errorBox').style.display = 'none';
+  document.getElementById('importInfo').innerHTML =
+    '<strong>' + esc(csvFileName) + '</strong> &middot; ' + csvRows.length + ' rows found. Match your CSV columns to lead fields below (best guesses pre-selected), then import. Imported leads save to All leads and get selected so you can add them straight to a list.';
+  let h = '';
+  for (const f of IMPORT_FIELDS) {
+    const guess = guessColumn(f);
+    h += '<div><label>' + f.label + '</label><select id="map-' + f.key + '">'
+      + '<option value="-1">- skip -</option>'
+      + csvHeaders.map((hd, i) => '<option value="' + i + '"' + (i === guess ? ' selected' : '') + '>' + esc(hd || ('Column ' + (i + 1))) + '</option>').join('')
+      + '</select></div>';
+  }
+  document.getElementById('importMapping').innerHTML = h;
+  document.getElementById('importPanel').classList.add('open');
+  document.getElementById('importPanel').scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+}
+
+function cancelImport() {
+  csvRows = null;
+  document.getElementById('importPanel').classList.remove('open');
+}
+
+function importHash(s) {
+  let h = 5381;
+  for (let i = 0; i < s.length; i++) h = ((h << 5) + h + s.charCodeAt(i)) >>> 0;
+  return h.toString(36);
+}
+
+async function doImport() {
+  if (!csvRows) return;
+  if (demoMode) { demoMode = false; document.getElementById('demoBanner').style.display = 'none'; }
+
+  const map = {};
+  for (const f of IMPORT_FIELDS) map[f.key] = parseInt(document.getElementById('map-' + f.key).value);
+  if (map.name === -1) { showError('Pick which column holds the business name - it is the only required field.'); return; }
+
+  const get = (row, key) => map[key] >= 0 ? String(row[map[key]] || '').trim() : '';
+  const imported = [];
+  for (const row of csvRows) {
+    const name = get(row, 'name');
+    if (!name) continue;
+    let website = get(row, 'website');
+    if (website && !/^https?:\/\//i.test(website)) website = 'https://' + website;
+    const lead = {
+      id: 'imp-' + importHash(name.toLowerCase() + '|' + get(row, 'phone').replace(/\D/g, '')),
+      name: name,
+      address: get(row, 'address'),
+      phone: get(row, 'phone'),
+      email: get(row, 'email'),
+      website: website,
+      socials: {},
+      foundBy: currentProfile,
+      ownerName: get(row, 'owner'),
+      siteGrade: '',
+      siteIssues: [],
+      runsAds: '',
+      lastReview: null,
+      query: 'CSV import: ' + csvFileName,
+      rating: null,
+      reviewCount: 0,
+      mapsUrl: '',
+      temp: classify(website),
+      searchLocation: get(row, 'town')
+    };
+    detectSocialFromWebsite(lead);
+    imported.push(lead);
+  }
+
+  if (!imported.length) { showError('No usable rows found - every row was missing a business name.'); return; }
+
+  cancelImport();
+  setStatus(true, 'Importing ' + imported.length + ' leads...', 60);
+
+  saveLeadsLocal(imported);
+  if (sbConfigured()) await sbUpsertLeads(imported, 'CSV import: ' + csvFileName);
+
+  // show them as the current view, pre-selected for adding to a list
+  lastSearchResults = imported;
+  allResults = imported;
+  viewMode = 'search';
+  selectedIds = new Set(imported.map(r => r.id));
+  renderTabs();
+  updateStats();
+  render();
+  renderSelectionBar();
+  document.getElementById('stats').style.display = 'grid';
+  document.getElementById('toolbar').style.display = 'flex';
+  document.getElementById('legend').style.display = 'block';
+  document.getElementById('results').style.display = 'block';
+  setStatus(true, imported.length + ' leads imported and selected - use "Add to list" to file them.', 100);
+  setTimeout(() => setStatus(false), 3500);
 }
 
 /* ===== UTILS ===== */

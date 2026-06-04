@@ -236,6 +236,14 @@
   .act-btn.wa-btn { background: rgba(37,211,102,0.1); color: #25D366; border-color: rgba(37,211,102,0.35); }
   .act-btn.wa-btn:hover { background: rgba(37,211,102,0.18); color: #4be37f; }
   .btn svg { flex-shrink: 0; }
+  .gemini-soon { opacity: 0.55; cursor: default; }
+  .gemini-soon:hover { opacity: 0.8; background: transparent; }
+  .gemini-soon #geminiIcon { color: var(--cold); display: inline-flex; }
+  .soon-tag {
+    font-size: 9px; font-weight: 700; letter-spacing: 0.6px; text-transform: uppercase;
+    padding: 2px 6px; border-radius: 100px; margin-left: 2px;
+    background: var(--surface-2); border: 1px solid var(--border); color: var(--text-dim);
+  }
   /* ===== TABS ===== */
   .tab-bar { display: flex; gap: 6px; margin-bottom: 16px; flex-wrap: wrap; align-items: center; }
   .tab {
@@ -421,6 +429,26 @@
     font-style: italic;
   }
   .pitch-actions { display: flex; gap: 8px; margin-top: 18px; flex-wrap: wrap; }
+
+  .gem-opt {
+    display: block; width: 100%; text-align: left;
+    background: var(--surface-2); border: 1px solid var(--border);
+    border-radius: var(--radius); padding: 12px 14px; margin-bottom: 8px;
+    color: var(--text); cursor: pointer; font-family: 'IBM Plex Sans', sans-serif;
+    transition: all 0.15s;
+  }
+  .gem-opt:hover { border-color: var(--border-light); background: var(--surface); }
+  .gem-opt:disabled { opacity: 0.5; cursor: wait; }
+  .gem-opt .go-title { font-size: 14px; font-weight: 600; display: flex; align-items: center; gap: 8px; }
+  .gem-opt .go-title svg { color: var(--cold); }
+  .gem-opt .go-desc { font-size: 12px; color: var(--text-dim); margin-top: 3px; line-height: 1.45; }
+  .gem-result {
+    background: var(--bg); border: 1px solid var(--border); border-radius: var(--radius);
+    padding: 14px; font-size: 13px; line-height: 1.6; white-space: pre-wrap;
+    margin-top: 12px; max-height: 320px; overflow-y: auto;
+  }
+  .gem-key-note { font-size: 12px; color: var(--text-dim); margin-top: 10px; line-height: 1.5; }
+  .gem-key-note a { color: var(--cold); }
 
   /* ===== ARGUS BRANDING ===== */
   .gate-logo { display: flex; align-items: center; gap: 12px; }
@@ -804,6 +832,11 @@
   <div class="modal-card" id="pitchCard"></div>
 </div>
 
+<!-- ===== GEMINI MODAL ===== -->
+<div class="modal-overlay" id="geminiModal" onclick="if(event.target===this)closeGemini()">
+  <div class="modal-card" id="geminiCard"></div>
+</div>
+
 <!-- ===== LOGIN GATE ===== -->
 <div class="gate" id="loginGate">
   <div class="eyes-field" id="eyesFieldLogin" aria-hidden="true"></div>
@@ -981,6 +1014,7 @@
     <div style="display:flex; gap:8px; align-items:center;">
       <button class="btn btn-ghost btn-sm" onclick="toggleTplPanel()" title="Edit the outreach messages used by the WhatsApp and Copy message buttons"><span id="tplIcon"></span>Message templates</button>
       <button class="btn btn-ghost btn-sm" id="emailBtn" onclick="scanSites()" title="Visits each lead's website and pulls emails, social links, owner names, site quality grade and ad pixels. Free, uses no Google API quota."><span id="scanIcon"></span>Scan websites for contact info</button>
+      <button class="btn btn-ghost btn-sm gemini-soon" id="geminiBtn" onclick="setGeminiKeyFlow()" title="Set your Gemini API key (free from aistudio.google.com) to unlock the per-lead AI button: website verification, owner lookup, intel, upgraded pitches and demo prompts."><span id="geminiIcon"></span>Gemini AI<span class="soon-tag" id="geminiTag">no key</span></button>
       <button class="btn btn-ghost btn-sm" onclick="clearPipeline()">Reset statuses</button>
       <div class="export-group">
         <button class="btn btn-ghost btn-sm" onclick="toggleExportMenu(event)" title="Download leads as CSV for spreadsheets, Pipedrive or Instantly"><span id="exportIcon"></span>Export CSV ▾</button>
@@ -2140,6 +2174,171 @@ async function runDeepAudit(id) {
   psiRunning = false;
 }
 
+/* ===== GEMINI ENGINE ===== */
+function getGeminiKey() { return store.get('st_gemini_key', ''); }
+
+function setGeminiKeyFlow() {
+  const current = getGeminiKey();
+  const k = prompt('Paste your Gemini API key (free from aistudio.google.com > Get API key):', current);
+  if (k === null) return;
+  store.set('st_gemini_key', k.trim());
+  updateGeminiBtn();
+  setStatus(true, k.trim() ? 'Gemini key saved - the AI button on each lead is now live.' : 'Gemini key removed.', 100);
+  setTimeout(() => setStatus(false), 2500);
+}
+
+function updateGeminiBtn() {
+  const tag = document.getElementById('geminiTag');
+  const btn = document.getElementById('geminiBtn');
+  if (getGeminiKey()) { tag.textContent = 'ready'; btn.classList.remove('gemini-soon'); }
+  else { tag.textContent = 'no key'; btn.classList.add('gemini-soon'); }
+}
+
+async function geminiCall(promptText, useGrounding) {
+  const key = getGeminiKey();
+  if (!key) throw new Error('No Gemini key set. Click "Gemini AI" in the toolbar and paste a free key from aistudio.google.com.');
+  const body = { contents: [{ parts: [{ text: promptText }] }] };
+  if (useGrounding !== false) body.tools = [{ google_search: {} }];
+  const res = await fetch('https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=' + encodeURIComponent(key), {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(body)
+  });
+  const data = await res.json();
+  if (data.error) throw new Error(data.error.message || 'Gemini request failed');
+  const parts = (data.candidates && data.candidates[0] && data.candidates[0].content && data.candidates[0].content.parts) || [];
+  return parts.map(p => p.text || '').join('');
+}
+
+function extractJsonBlock(text) {
+  const m = text.match(/\{[\s\S]*\}/);
+  if (!m) return null;
+  try { return JSON.parse(m[0]); } catch (e) { return null; }
+}
+
+function leadSnapshot(r) {
+  return 'Name: ' + r.name
+    + '\nLocation: ' + (r.address || r.searchLocation || 'Ireland')
+    + '\nVertical: ' + (r.query || 'local business')
+    + '\nGoogle rating: ' + (r.rating ? r.rating + ' stars, ' + r.reviewCount + ' reviews' : 'unknown')
+    + '\nWebsite: ' + (r.website || 'NONE on their Google listing')
+    + (r.siteGrade && r.siteGrade !== '?' ? '\nSite grade: ' + r.siteGrade + (r.siteIssues && r.siteIssues.length ? ' (' + r.siteIssues.join('; ') + ')' : '') : '')
+    + (r.runsAds ? '\nRuns ads: ' + r.runsAds : '')
+    + (r.ownerName ? '\nOwner: ' + r.ownerName : '')
+    + (r.email ? '\nEmail: ' + r.email : '')
+    + (Object.keys(r.socials || {}).length ? '\nSocials: ' + Object.values(r.socials).join(', ') : '');
+}
+
+function openGemini(id) {
+  const r = findLead(id);
+  if (!r) return;
+  const hasKey = !!getGeminiKey();
+  const card = document.getElementById('geminiCard');
+
+  const opt = (action, title, desc) =>
+    '<button class="gem-opt" onclick="geminiRun(\'' + escAttr(r.id) + '\', \'' + action + '\')"' + (hasKey ? '' : ' disabled') + '>'
+    + '<div class="go-title">' + ICONS.sparkle + title + '</div>'
+    + '<div class="go-desc">' + desc + '</div></button>';
+
+  card.innerHTML =
+    '<button class="modal-close" onclick="closeGemini()" aria-label="Close">&times;</button>'
+    + '<div class="pitch-title">AI actions: ' + esc(r.name) + '</div>'
+    + '<div class="pitch-sub">Each runs only when you click it. Grounded in live Google Search. Free tier covers all of this.</div>'
+    + opt('verify', r.temp === 'hot' ? 'Verify they really have no website' : 'Re-check website status',
+        'Searches Google for an official site (ignoring directories, booking platforms and socials). If one turns up, the lead is reclassified before anyone pitches "you have no website" to someone who does.')
+    + opt('enrich', 'Find owner + contact details',
+        'Hunts news, LinkedIn, CRO records and directories for who runs the business, plus any public email or phone. Fills empty fields automatically.')
+    + opt('intel', 'Business intel sweep',
+        'Years trading, news mentions, awards, hiring, other locations - pitch-relevant facts only, saveable to the lead\'s note.')
+    + opt('pitch', 'AI-upgraded pitch',
+        'Takes the rule-based Autopitch and sharpens it with live specifics about this business. Returns angle, key points and a written opener.')
+    + opt('demoprompt', 'Demo build prompt',
+        'Writes a complete, paste-ready prompt for Cursor/Claude to build their demo site - sections, copy direction and branding cues researched from their real reviews and socials, plus SquareTwo build standards.')
+    + '<div id="gemResult"></div>'
+    + (hasKey ? '' : '<div class="gem-key-note">These need a Gemini API key (free, 2 clicks): <a href="https://aistudio.google.com" target="_blank" rel="noopener">aistudio.google.com</a> &gt; Get API key, then click "Gemini AI" in the toolbar to paste it.</div>');
+
+  document.getElementById('geminiModal').classList.add('open');
+}
+
+function closeGemini() {
+  document.getElementById('geminiModal').classList.remove('open');
+}
+
+async function geminiRun(id, action) {
+  const r = findLead(id);
+  if (!r) return;
+  const el = document.getElementById('gemResult');
+  el.innerHTML = '<div class="gem-result">Working - searching Google and thinking (5-15 seconds)...</div>';
+  document.querySelectorAll('.gem-opt').forEach(b => b.disabled = true);
+
+  try {
+    let out = '';
+    if (action === 'verify') {
+      const raw = await geminiCall('Search Google to determine whether the business "' + r.name + '" located at "' + (r.address || r.searchLocation) + ', Ireland" has its OWN official website. EXCLUDE social media pages, online directories (GoldenPages, Yelp etc), booking platforms (Fresha, Booksy etc) and marketplaces - those do not count as an official website. Respond with ONLY a JSON object, no other text: {"hasSite": true or false, "url": "the official site url or empty string", "presence": "one sentence describing their actual web presence"}');
+      const j = extractJsonBlock(raw);
+      if (!j) { out = 'Could not parse the result:\n\n' + raw; }
+      else if (j.hasSite && j.url) {
+        r.website = j.url;
+        r.temp = classify(j.url);
+        r.siteGrade = '';
+        r.siteIssues = ['Site found by AI verification: ' + j.url];
+        out = 'SITE FOUND - lead reclassified to ' + r.temp.toUpperCase() + '.\n\n' + j.url + '\n\n' + (j.presence || '') + '\n\nRun a Scan to grade the site before pitching.';
+        sbUpsertLeads([r]); saveLeadsLocal([r]); render();
+      } else {
+        r.siteIssues = [...(r.siteIssues || []).filter(i => !/^Verified/.test(i)), 'Verified: no official website (AI, ' + new Date().toLocaleDateString('en-IE') + ')'];
+        out = 'CONFIRMED: no official website found on Google.\n\n' + (j.presence || '') + '\n\nSafe to pitch as a hot lead.';
+        sbUpsertLeads([r]); saveLeadsLocal([r]); render();
+      }
+    } else if (action === 'enrich') {
+      const raw = await geminiCall('Search Google for who owns or runs the business "' + r.name + '" in ' + (r.searchLocation || 'Ireland') + ', Ireland. Check news articles, LinkedIn, Irish CRO company records (core.cro.ie) and business directories. Also look for a publicly listed contact email and phone. Respond with ONLY a JSON object: {"owner": "full name or empty", "email": "or empty", "phone": "or empty", "source": "one line on where this was found"}');
+      const j = extractJsonBlock(raw);
+      if (!j) { out = 'Could not parse the result:\n\n' + raw; }
+      else {
+        const applied = [];
+        if (j.owner && !r.ownerName) { r.ownerName = j.owner; applied.push('owner'); }
+        if (j.email && !r.email) { r.email = j.email; applied.push('email'); }
+        if (j.phone && !r.phone) { r.phone = j.phone; applied.push('phone'); }
+        out = 'Owner: ' + (j.owner || 'not found') + '\nEmail: ' + (j.email || 'not found') + '\nPhone: ' + (j.phone || 'not found') + '\nSource: ' + (j.source || '-')
+          + (applied.length ? '\n\nApplied to the lead: ' + applied.join(', ') + '.' : '\n\nNothing new to apply (fields already filled or nothing found).');
+        if (applied.length) { sbUpsertLeads([r]); saveLeadsLocal([r]); render(); }
+      }
+    } else if (action === 'intel') {
+      out = await geminiCall('Search Google for background on the business "' + r.name + '" in ' + (r.searchLocation || 'Ireland') + ', Ireland: how long trading, news mentions, awards, whether hiring, multiple locations. Reply with 3-5 short plain-text bullet points of pitch-relevant facts only (each starting with "- "). If little is found, say so plainly in one line. No preamble, no markdown headers.');
+      el.dataset.intel = out;
+    } else if (action === 'pitch') {
+      const p = buildPitch(r);
+      const strip = s => s.replace(/<[^>]+>/g, '');
+      out = await geminiCall('You are writing sales prep for SquareTwo, a Dublin web agency selling websites to Irish SMBs on a monthly retainer with a demo-first approach (build the demo before the call). Improve the draft pitch below for this specific business. Search Google for anything recent or specific (their reviews, news, site) to sharpen it. Plain English, punchy, no em dashes, no markdown formatting. Output exactly three sections labelled ANGLE: (2 sentences), KEY POINTS: (4-6 lines each starting "- "), OPENER: (a 60-80 word first message addressed to the owner).\n\nBUSINESS:\n' + leadSnapshot(r) + '\n\nDRAFT PITCH:\nAngle: ' + strip(p.angle) + '\nPoints:\n' + p.points.map(x => '- ' + strip(x)).join('\n'));
+    } else if (action === 'demoprompt') {
+      out = await geminiCall('Write a complete build prompt that can be pasted into an AI coding assistant to generate a single-file HTML demo website for the business below. First search Google for their reviews and social media presence to inform the copy and branding cues. The prompt you write must specify: page sections (hero, services, reviews/social proof, about, contact), copy direction using real specifics you found (e.g. what customers praise in reviews), colour and branding cues, and these SquareTwo build standards verbatim: single-file HTML, mobile-first, WhatsApp chat widget, simple keyword chatbot, Formspree contact form, JSON-LD LocalBusiness schema, scroll animations, deploy-ready for Vercel. Output only the build prompt itself, no preamble. No em dashes anywhere.\n\nBUSINESS:\n' + leadSnapshot(r));
+    }
+
+    const actions = (action === 'intel')
+      ? '<div class="pitch-actions"><button class="btn btn-primary btn-sm" onclick="saveIntelToNote(\'' + escAttr(r.id) + '\')">Save to lead note</button><button class="btn btn-ghost btn-sm" onclick="copyText(document.getElementById(\'gemResult\').dataset.raw, \'Copied\')">Copy</button></div>'
+      : '<div class="pitch-actions"><button class="btn btn-primary btn-sm" onclick="copyText(document.getElementById(\'gemResult\').dataset.raw, \'Copied\')">Copy result</button></div>';
+
+    el.innerHTML = '<div class="gem-result">' + esc(out) + '</div>' + actions;
+    el.dataset.raw = out;
+  } catch (e) {
+    el.innerHTML = '<div class="gem-result">Failed: ' + esc(e.message) + '</div>';
+  }
+  document.querySelectorAll('.gem-opt').forEach(b => b.disabled = false);
+}
+
+function saveIntelToNote(id) {
+  const r = findLead(id);
+  const el = document.getElementById('gemResult');
+  if (!r || !el || !el.dataset.raw) return;
+  const p = getPipeline();
+  if (!p[r.id]) p[r.id] = {};
+  p[r.id].note = ((p[r.id].note || '') + ' | AI intel: ' + el.dataset.raw.replace(/\n/g, ' ')).replace(/^ \| /, '').slice(0, 900);
+  if (!demoMode) store.set('st_pipeline', p);
+  sbUpdateLead(r.id, { status: p[r.id].status || '', status_by: p[r.id].by || '', note: p[r.id].note });
+  setStatus(true, 'Intel saved to the lead note.', 100);
+  setTimeout(() => setStatus(false), 2000);
+  render();
+}
+
 function copyPitch(id) {
   const r = findLead(id);
   if (!r) return;
@@ -2736,6 +2935,7 @@ function render() {
         + '<button class="act-btn" onclick="copyMsg(\'' + escAttr(r.id) + '\')" title="Copies your outreach message (filled in for this lead) to paste into email, DMs or texts">' + ICONS.copy + 'Copy message</button>'
         + '<button class="act-btn" onclick="copyBrief(\'' + escAttr(r.id) + '\')" title="Copies a demo website brief for this business - paste into Cursor or Claude to build their demo site">' + ICONS.brief + 'Demo brief</button>'
         + '<button class="act-btn" onclick="openPitch(\'' + escAttr(r.id) + '\')" title="Pops up the key talking points and angle for pitching this exact business">' + ICONS.pitch + 'Autopitch</button>'
+        + '<button class="act-btn" onclick="openGemini(\'' + escAttr(r.id) + '\')" title="Gemini AI actions for this lead: verify website status, find owner and contacts, business intel, upgraded pitch, demo build prompt">' + ICONS.sparkle + 'AI</button>'
         + '</div>'
         + '<input class="note-input" id="note-' + escAttr(r.id) + '" placeholder="Add a note..." value="' + escAttr(p.note || '') + '" onchange="setLeadNote(\'' + escAttr(r.id) + '\', this.value)">'
       + '</div>'
@@ -3001,7 +3201,8 @@ const ICONS = {
   scan: '<svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>',
   tpl: '<svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z"/></svg>',
   download: '<svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4M7 10l5 5 5-5M12 15V3"/></svg>',
-  pitch: '<svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M13 2L3 14h7l-1 8 10-12h-7l1-8z"/></svg>'
+  pitch: '<svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M13 2L3 14h7l-1 8 10-12h-7l1-8z"/></svg>',
+  sparkle: '<svg viewBox="0 0 24 24" width="13" height="13" fill="currentColor" aria-hidden="true"><path d="M12 2c.6 4.8 3.2 7.4 8 8-4.8.6-7.4 3.2-8 8-.6-4.8-3.2-7.4-8-8 4.8-.6 7.4-3.2 8-8z"/></svg>'
 };
 
 /* ===== AUTH GATE ===== */
@@ -3114,6 +3315,8 @@ initAuth();
 document.getElementById('scanIcon').innerHTML = ICONS.scan;
 document.getElementById('tplIcon').innerHTML = ICONS.tpl;
 document.getElementById('exportIcon').innerHTML = ICONS.download;
+document.getElementById('geminiIcon').innerHTML = ICONS.sparkle;
+updateGeminiBtn();
 renderTabs();
 loadLists(true);
 </script>

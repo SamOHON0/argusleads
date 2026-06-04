@@ -823,6 +823,278 @@
   @media (min-width: 901px) {
     .m-label { display: none; }
   }
+
+  /* =========================================================
+     SAAS POLISH PASS - elevation, depth, refinement
+     (cascade overrides; theme variables untouched)
+     ========================================================= */
+
+  body {
+    background:
+      radial-gradient(1100px 480px at 50% -120px, color-mix(in srgb, var(--accent) 7%, transparent), transparent 70%),
+      var(--bg);
+  }
+
+  /* slim dark scrollbars */
+  ::-webkit-scrollbar { width: 10px; height: 10px; }
+  ::-webkit-scrollbar-track { background: transparent; }
+  ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 100px; border: 2px solid var(--bg); }
+  ::-webkit-scrollbar-thumb:hover { background: var(--border-light); }
+
+  /* sticky floating app bar */
+  .header {
+    position: sticky;
+    top: 10px;
+    z-index: 60;
+    background: color-mix(in srgb, var(--surface) 88%, transparent);
+    backdrop-filter: blur(14px);
+    -webkit-backdrop-filter: blur(14px);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-lg);
+    padding: 14px 18px;
+    box-shadow: 0 12px 32px rgba(0, 0, 0, 0.35);
+  }
+
+  /* card elevation + hairline highlight */
+  .key-section, .search-section, .stat, .results, .tpl-panel, .selection-bar {
+    box-shadow:
+      inset 0 1px 0 rgba(255, 255, 255, 0.035),
+      0 10px 30px rgba(0, 0, 0, 0.28);
+  }
+  .stat { position: relative; overflow: hidden; transition: border-color 0.2s, transform 0.2s; }
+  .stat::after {
+    content: '';
+    position: absolute; top: 0; left: 0; right: 0; height: 2px;
+    background: linear-gradient(90deg, transparent, color-mix(in srgb, var(--accent) 55%, transparent), transparent);
+    opacity: 0.7;
+  }
+  .stat:hover { border-color: var(--border-light); transform: translateY(-1px); }
+
+  /* primary button: gradient + glow */
+  .btn { transition: all 0.18s cubic-bezier(0.2, 0, 0, 1); }
+  .btn-primary {
+    background: linear-gradient(180deg, color-mix(in srgb, var(--accent) 88%, white) 0%, var(--accent) 100%);
+    box-shadow: 0 4px 16px color-mix(in srgb, var(--accent) 28%, transparent), inset 0 1px 0 rgba(255, 255, 255, 0.25);
+  }
+  .btn-primary:hover {
+    filter: none;
+    box-shadow: 0 6px 22px color-mix(in srgb, var(--accent) 40%, transparent), inset 0 1px 0 rgba(255, 255, 255, 0.3);
+    transform: translateY(-1px);
+  }
+  .btn-primary:active { transform: translateY(0); }
+  .btn-ghost:hover { transform: translateY(-1px); box-shadow: 0 4px 12px rgba(0, 0, 0, 0.25); }
+  .btn-ghost:active { transform: translateY(0); }
+
+  /* focus rings on every input */
+  .field input:focus, .field select:focus,
+  .key-section input:focus,
+  .tpl-grid textarea:focus,
+  .login-card input:focus,
+  .note-input:focus {
+    border-color: var(--accent-dark);
+    box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent) 16%, transparent);
+  }
+
+  /* tabs: pill refinement, active glow */
+  .tab { transition: all 0.18s cubic-bezier(0.2, 0, 0, 1); }
+  .tab:hover { transform: translateY(-1px); }
+  .tab.active {
+    background: linear-gradient(180deg, color-mix(in srgb, var(--accent) 88%, white) 0%, var(--accent) 100%);
+    box-shadow: 0 4px 14px color-mix(in srgb, var(--accent) 30%, transparent);
+  }
+
+  /* results table: hover rail + smoother rows */
+  .row { transition: background 0.12s, box-shadow 0.12s; }
+  .row:hover { box-shadow: inset 2px 0 0 var(--accent); }
+  .results-head { backdrop-filter: blur(8px); }
+
+  /* status bar reads as a toast pill */
+  .status-bar {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 100px;
+    padding: 9px 16px;
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.3);
+    width: fit-content;
+    max-width: 100%;
+  }
+
+  /* chips and meta polish */
+  .chip { transition: all 0.15s; }
+  .chip:hover { transform: translateY(-1px); }
+  .meta-chip { backdrop-filter: blur(4px); }
+  .filter-group, .profile-group { box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.03); }
+
+  /* modals: deeper, smoother entrance */
+  .modal-card {
+    box-shadow: 0 24px 80px rgba(0, 0, 0, 0.6), inset 0 1px 0 rgba(255, 255, 255, 0.04);
+    animation: modalIn 0.18s cubic-bezier(0.2, 0, 0, 1);
+  }
+  @keyframes modalIn {
+    from { opacity: 0; transform: translateY(10px) scale(0.985); }
+    to { opacity: 1; transform: translateY(0) scale(1); }
+  }
+  .modal-overlay { backdrop-filter: blur(3px); -webkit-backdrop-filter: blur(3px); }
+
+  /* gates inherit the depth */
+  .login-card { box-shadow: 0 24px 70px rgba(0, 0, 0, 0.5), inset 0 1px 0 rgba(255, 255, 255, 0.04); }
+
+  /* export / selection menus */
+  .export-menu, .sel-menu {
+    box-shadow: 0 16px 48px rgba(0, 0, 0, 0.5);
+    animation: modalIn 0.14s cubic-bezier(0.2, 0, 0, 1);
+  }
+
+  @media (max-width: 900px) {
+    .header { position: static; }
+  }
+
+
+  /* =========================================================
+     DESIGN SYSTEM LAYER 2 - production SaaS refinement
+     ========================================================= */
+
+  /* type discipline */
+  .header h1, .gate-logo, .pitch-title, .stat .value, .tpl-panel h3 { letter-spacing: -0.02em; }
+  .stat .value, .score-badge, .rating, .usage-pill, .hist-row, .result-count {
+    font-variant-numeric: tabular-nums;
+    font-feature-settings: 'tnum';
+  }
+  .field label, .results-head, .pitch-section h4, .tpl-grid label, .hist-row.hist-head {
+    letter-spacing: 0.08em;
+  }
+
+  /* keyboard accessibility: visible focus only when keyboard-driven */
+  :focus { outline: none; }
+  :focus-visible {
+    outline: 2px solid var(--accent);
+    outline-offset: 2px;
+    border-radius: 4px;
+  }
+
+  /* status bar -> bottom-right toast, where SaaS apps put it */
+  .status-bar {
+    position: fixed;
+    bottom: 24px;
+    right: 24px;
+    left: auto;
+    z-index: 400;
+    margin: 0;
+    background: color-mix(in srgb, var(--surface) 94%, transparent);
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+    border: 1px solid var(--border-light);
+    box-shadow: 0 16px 48px rgba(0, 0, 0, 0.5);
+    animation: toastIn 0.22s cubic-bezier(0.2, 0, 0, 1);
+    max-width: min(480px, calc(100vw - 32px));
+  }
+  @keyframes toastIn {
+    from { opacity: 0; transform: translateY(12px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+
+  /* selection bar -> floating command bar, bottom-center */
+  .selection-bar.open {
+    position: fixed;
+    bottom: 24px;
+    left: 50%;
+    transform: translateX(-50%);
+    z-index: 380;
+    margin: 0;
+    background: color-mix(in srgb, var(--surface) 95%, transparent);
+    backdrop-filter: blur(14px);
+    -webkit-backdrop-filter: blur(14px);
+    border: 1px solid var(--border-light);
+    border-radius: 100px;
+    padding: 10px 18px;
+    box-shadow: 0 20px 60px rgba(0, 0, 0, 0.55), inset 0 1px 0 rgba(255, 255, 255, 0.05);
+    animation: toastIn 0.22s cubic-bezier(0.2, 0, 0, 1);
+    white-space: nowrap;
+    max-width: calc(100vw - 24px);
+    overflow-x: auto;
+  }
+  .selection-bar .sel-count {
+    background: var(--accent);
+    color: var(--accent-contrast);
+    border-radius: 100px;
+    padding: 4px 12px;
+    font-size: 12px;
+  }
+  .selection-bar .sel-menu { bottom: calc(100% + 8px); top: auto; }
+
+  /* selected rows read as selected */
+  .row.is-selected {
+    background: color-mix(in srgb, var(--accent) 7%, transparent);
+    box-shadow: inset 2px 0 0 var(--accent);
+  }
+  .row.is-selected:hover { background: color-mix(in srgb, var(--accent) 10%, transparent); }
+
+  /* table rhythm */
+  .results-head, .row { padding-top: 13px; padding-bottom: 13px; }
+  .results-head span { user-select: none; }
+  .row-check input[type="checkbox"] { transform: scale(1.05); }
+
+  /* empty states that look intentional */
+  .empty {
+    border: 1px dashed var(--border);
+    border-radius: var(--radius);
+    margin: 16px;
+    padding: 56px 24px;
+    background:
+      radial-gradient(300px 120px at 50% 0%, color-mix(in srgb, var(--accent) 5%, transparent), transparent);
+  }
+  .empty::before {
+    content: '';
+    display: block;
+    width: 44px; height: 27px;
+    margin: 0 auto 14px;
+    border-radius: 50%;
+    background: var(--surface-2);
+    border: 1.5px solid var(--border-light);
+    position: relative;
+    box-shadow: inset 0 0 0 100px transparent;
+    background-image: radial-gradient(circle 6px at 50% 50%, var(--text-dim) 0, var(--text-dim) 5px, transparent 6px);
+  }
+
+  /* KPI cards: hierarchy between the number and its label */
+  .stat { padding: 16px 18px; }
+  .stat .label { font-size: 10.5px; letter-spacing: 0.09em; }
+  .stat .value { font-size: 28px; margin-top: 6px; line-height: 1; }
+
+  /* destructive affordance */
+  .selection-bar button[onclick*="deleteSelectedLeads"]:hover {
+    background: rgba(248, 113, 113, 0.12);
+  }
+
+  /* search card gets primary-surface emphasis */
+  .search-section {
+    background: linear-gradient(180deg, color-mix(in srgb, var(--surface) 97%, white) 0%, var(--surface) 100%);
+  }
+
+  /* gate screens: cinematic */
+  .gate-logo { font-size: 34px; }
+  .gate-title { letter-spacing: -0.01em; }
+  .profile-avatar { box-shadow: 0 16px 40px rgba(0, 0, 0, 0.45); }
+  .profile-tile:hover .profile-avatar { box-shadow: 0 22px 56px rgba(0, 0, 0, 0.55); }
+  .profile-tile .pname { font-weight: 500; letter-spacing: 0.01em; }
+
+  /* legend reads as a caption, not body copy */
+  .legend { opacity: 0.85; }
+
+  /* respect users who turn motion off */
+  @media (prefers-reduced-motion: reduce) {
+    *, *::before, *::after {
+      animation-duration: 0.01ms !important;
+      animation-iteration-count: 1 !important;
+      transition-duration: 0.01ms !important;
+    }
+  }
+
+  @media (max-width: 900px) {
+    .status-bar { right: 12px; bottom: 12px; left: 12px; }
+    .selection-bar.open { bottom: 12px; border-radius: var(--radius-lg); }
+  }
+
 </style>
 </head>
 <body>
@@ -2923,7 +3195,8 @@ function render() {
 
   for (const r of filtered) {
     const p = pipeline[r.id] || {};
-    const rowClass = p.status === 'contacted' ? 'row is-contacted' : (p.status === 'skipped' ? 'row is-skipped' : 'row');
+    let rowClass = p.status === 'contacted' ? 'row is-contacted' : (p.status === 'skipped' ? 'row is-skipped' : 'row');
+    if (selectedIds.has(r.id)) rowClass += ' is-selected';
 
     const tag = r.temp === 'hot' ? '<span class="tag tag-hot">HOT</span>'
       : r.temp === 'warm' ? '<a href="' + escAttr(r.website) + '" target="_blank" rel="noopener" class="tag tag-warm">WARM</a>'

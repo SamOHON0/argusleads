@@ -90,7 +90,7 @@
 <meta name="robots" content="noindex, nofollow">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Sora:wght@400;600;700&family=IBM+Plex+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
 <style>
   :root {
     --bg: #0e1116;
@@ -124,7 +124,7 @@
   * { box-sizing: border-box; margin: 0; padding: 0; }
   html { background: var(--bg); }
   body {
-    font-family: 'IBM Plex Sans', sans-serif;
+    font-family: 'Inter', sans-serif;
     background: var(--bg);
     color: var(--text);
     min-height: 100vh;
@@ -164,14 +164,14 @@
     border: 1px solid var(--border);
     border-radius: 8px;
     color: var(--text);
-    font-family: 'IBM Plex Sans', sans-serif;
+    font-family: 'Inter', sans-serif;
     cursor: pointer;
   }
   select:focus { outline: none; border-color: var(--accent-dark); }
 
   /* ===== HEADER ===== */
   .header { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 24px; flex-wrap: wrap; gap: 12px; }
-  .header h1 { font-family: 'Sora', sans-serif; font-size: 26px; font-weight: 700; letter-spacing: -0.5px; display: flex; align-items: center; gap: 10px; }
+  .header h1 { font-family: 'Inter', sans-serif; font-size: 26px; font-weight: 700; letter-spacing: -0.5px; display: flex; align-items: center; gap: 10px; }
   .logo-eye-sm { width: 30px; height: 19px; }
   .logo-eye-sm::after { width: 8px; height: 8px; margin: -4px 0 0 -4px; }
   .header h1 span { color: var(--accent); }
@@ -180,7 +180,7 @@
 
   .profile-group { display: flex; gap: 4px; background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 4px; }
   .profile-btn {
-    font-family: 'Sora', sans-serif;
+    font-family: 'Inter', sans-serif;
     font-size: 13px;
     font-weight: 600;
     padding: 6px 14px;
@@ -239,7 +239,7 @@
   }
   .angle-line b { color: var(--text); font-weight: 600; }
 
-  .score-badge { font-family: 'Sora', sans-serif; font-size: 15px; font-weight: 700; }
+  .score-badge { font-family: 'Inter', sans-serif; font-size: 15px; font-weight: 700; }
   .score-badge.s-high { color: var(--hot); }
   .score-badge.s-mid { color: var(--warm); }
   .score-badge.s-low { color: var(--text-dim); }
@@ -272,7 +272,7 @@
   /* ===== TABS ===== */
   .tab-bar { display: flex; gap: 6px; margin-bottom: 16px; flex-wrap: wrap; align-items: center; }
   .tab {
-    font-family: 'IBM Plex Sans', sans-serif; font-size: 13px; padding: 8px 16px;
+    font-family: 'Inter', sans-serif; font-size: 13px; padding: 8px 16px;
     border-radius: var(--radius); border: 1px solid var(--border);
     background: var(--surface); color: var(--text-dim); cursor: pointer; transition: all 0.15s;
     display: inline-flex; align-items: center; gap: 7px;
@@ -303,7 +303,7 @@
   .sel-menu button {
     display: block; width: 100%; text-align: left; padding: 10px 14px;
     background: transparent; border: none; color: var(--text);
-    font-family: 'IBM Plex Sans', sans-serif; font-size: 13px; cursor: pointer;
+    font-family: 'Inter', sans-serif; font-size: 13px; cursor: pointer;
   }
   .sel-menu button:hover { background: var(--surface-2); }
   .row-check { display: flex; align-items: flex-start; padding-top: 3px; }
@@ -321,14 +321,14 @@
     margin-bottom: 16px;
   }
   .tpl-panel.open { display: block; }
-  .tpl-panel h3 { font-family: 'Sora', sans-serif; font-size: 14px; margin-bottom: 4px; }
+  .tpl-panel h3 { font-family: 'Inter', sans-serif; font-size: 14px; margin-bottom: 4px; }
   .tpl-panel .tpl-hint { font-size: 12px; color: var(--text-dim); margin-bottom: 12px; }
   .tpl-panel .tpl-hint code { background: var(--surface-2); padding: 1px 5px; border-radius: 4px; font-size: 11px; }
   .tpl-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; margin-bottom: 12px; }
   .tpl-grid label { display: block; font-size: 11px; font-weight: 600; color: var(--text-dim); text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 6px; }
   .tpl-grid textarea {
     width: 100%; min-height: 130px; background: var(--bg); border: 1px solid var(--border);
-    border-radius: var(--radius); color: var(--text); font-family: 'IBM Plex Sans', sans-serif;
+    border-radius: var(--radius); color: var(--text); font-family: 'Inter', sans-serif;
     font-size: 13px; padding: 10px 12px; resize: vertical; line-height: 1.5;
   }
   .tpl-grid textarea:focus { outline: none; border-color: var(--accent-dark); }
@@ -361,7 +361,7 @@
     padding: 20px;
   }
   .gate.hidden { display: none; }
-  .gate-logo { font-family: 'Sora', sans-serif; font-size: 28px; font-weight: 700; letter-spacing: -0.5px; }
+  .gate-logo { font-family: 'Inter', sans-serif; font-size: 28px; font-weight: 700; letter-spacing: -0.5px; }
   .gate-logo span { color: var(--accent); }
   .login-card {
     background: var(--surface);
@@ -373,7 +373,7 @@
   }
   .login-card input {
     background: var(--bg); border: 1px solid var(--border); border-radius: var(--radius);
-    color: var(--text); font-family: 'IBM Plex Sans', sans-serif; font-size: 14px;
+    color: var(--text); font-family: 'Inter', sans-serif; font-size: 14px;
     padding: 12px 14px; height: 46px;
   }
   .login-card input:focus { outline: none; border-color: var(--accent-dark); }
@@ -382,7 +382,7 @@
   .login-card.shake { animation: shake 0.35s; }
   @keyframes shake { 0%,100%{transform:translateX(0)} 25%{transform:translateX(-8px)} 75%{transform:translateX(8px)} }
 
-  .gate-title { font-family: 'Sora', sans-serif; font-size: 22px; font-weight: 600; color: var(--text); }
+  .gate-title { font-family: 'Inter', sans-serif; font-size: 22px; font-weight: 600; color: var(--text); }
   .profile-tiles { display: flex; gap: 24px; flex-wrap: wrap; justify-content: center; }
   .profile-tile {
     display: flex; flex-direction: column; align-items: center; gap: 12px;
@@ -394,7 +394,7 @@
   .profile-avatar {
     width: 110px; height: 110px; border-radius: 18px;
     display: flex; align-items: center; justify-content: center;
-    font-family: 'Sora', sans-serif; font-size: 42px; font-weight: 700;
+    font-family: 'Inter', sans-serif; font-size: 42px; font-weight: 700;
     border: 2px solid transparent;
     transition: border-color 0.15s;
   }
@@ -402,7 +402,7 @@
   .profile-avatar.av-sam { background: linear-gradient(135deg, #16a34a, #4ade80); color: #06250f; }
   .profile-avatar.av-jack { background: linear-gradient(135deg, #2563eb, #60a5fa); color: #051c3b; }
   .profile-avatar.av-guest { background: linear-gradient(135deg, #dc2626, #f87171); color: #2d0707; }
-  .profile-tile .pname { font-family: 'IBM Plex Sans', sans-serif; font-size: 15px; color: var(--text-dim); }
+  .profile-tile .pname { font-family: 'Inter', sans-serif; font-size: 15px; color: var(--text-dim); }
   .profile-tile:hover .pname { color: var(--text); }
   .gate-footer { font-size: 12px; color: var(--text-dim); }
   .gate-footer a { color: var(--text-dim); cursor: pointer; text-decoration: underline; }
@@ -429,7 +429,7 @@
     font-size: 20px; cursor: pointer; line-height: 1; padding: 4px 8px;
   }
   .modal-close:hover { color: var(--text); }
-  .pitch-title { font-family: 'Sora', sans-serif; font-size: 18px; font-weight: 700; margin-bottom: 2px; padding-right: 30px; }
+  .pitch-title { font-family: 'Inter', sans-serif; font-size: 18px; font-weight: 700; margin-bottom: 2px; padding-right: 30px; }
   .pitch-sub { font-size: 12px; color: var(--text-dim); margin-bottom: 16px; }
   .pitch-section { margin-bottom: 16px; }
   .pitch-section h4 {
@@ -459,7 +459,7 @@
     display: block; width: 100%; text-align: left;
     background: var(--surface-2); border: 1px solid var(--border);
     border-radius: var(--radius); padding: 12px 14px; margin-bottom: 8px;
-    color: var(--text); cursor: pointer; font-family: 'IBM Plex Sans', sans-serif;
+    color: var(--text); cursor: pointer; font-family: 'Inter', sans-serif;
     transition: all 0.15s;
   }
   .gem-opt:hover { border-color: var(--border-light); background: var(--surface); }
@@ -591,7 +591,7 @@
     border: 1px solid var(--border);
     border-radius: var(--radius);
     color: var(--text);
-    font-family: 'IBM Plex Sans', sans-serif;
+    font-family: 'Inter', sans-serif;
     font-size: 14px;
     padding: 10px 12px;
     height: 42px;
@@ -603,7 +603,7 @@
     padding: 0 22px;
     border-radius: var(--radius);
     border: none;
-    font-family: 'Sora', sans-serif;
+    font-family: 'Inter', sans-serif;
     font-size: 14px;
     font-weight: 600;
     cursor: pointer;
@@ -616,6 +616,7 @@
   .btn-primary { background: var(--accent); color: var(--accent-contrast); }
   .btn-primary:hover { filter: brightness(1.15); }
   .btn-primary:disabled { opacity: 0.4; cursor: not-allowed; }
+  .btn:disabled { opacity: 0.5; cursor: progress; transform: none !important; }
   .btn-ghost { background: transparent; color: var(--text); border: 1px solid var(--border-light); }
   .btn-ghost:hover { background: var(--surface-2); }
   .btn-sm { height: 34px; padding: 0 14px; font-size: 13px; }
@@ -630,7 +631,7 @@
     color: var(--text-dim);
     cursor: pointer;
     transition: all 0.15s;
-    font-family: 'IBM Plex Sans', sans-serif;
+    font-family: 'Inter', sans-serif;
   }
   .chip:hover { color: var(--text); border-color: var(--border-light); }
 
@@ -656,7 +657,7 @@
     padding: 5px 12px;
     font-size: 12px;
     cursor: pointer;
-    font-family: 'IBM Plex Sans', sans-serif;
+    font-family: 'Inter', sans-serif;
   }
   .demo-banner button:hover { background: rgba(96,165,250,0.1); }
 
@@ -682,7 +683,7 @@
   .stats { display: none; grid-template-columns: repeat(5, 1fr); gap: 12px; margin-bottom: 20px; }
   .stat { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-lg); padding: 14px 16px; }
   .stat .label { font-size: 11px; color: var(--text-dim); text-transform: uppercase; letter-spacing: 0.5px; }
-  .stat .value { font-family: 'Sora', sans-serif; font-size: 26px; font-weight: 700; margin-top: 4px; }
+  .stat .value { font-family: 'Inter', sans-serif; font-size: 26px; font-weight: 700; margin-top: 4px; }
   .stat .value.hot { color: var(--hot); }
   .stat .value.warm { color: var(--warm); }
   .stat .value.cold { color: var(--cold); }
@@ -692,7 +693,7 @@
   .toolbar-left { display: flex; gap: 14px; align-items: center; flex-wrap: wrap; }
   .filter-group { display: flex; gap: 4px; background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 4px; }
   .filter-btn {
-    font-family: 'IBM Plex Sans', sans-serif;
+    font-family: 'Inter', sans-serif;
     font-size: 13px;
     padding: 7px 14px;
     border-radius: 7px;
@@ -732,7 +733,7 @@
     background: transparent;
     border: none;
     color: var(--text);
-    font-family: 'IBM Plex Sans', sans-serif;
+    font-family: 'Inter', sans-serif;
     font-size: 13px;
     cursor: pointer;
   }
@@ -790,7 +791,7 @@
     background: transparent;
     color: var(--text-dim);
     cursor: pointer;
-    font-family: 'IBM Plex Sans', sans-serif;
+    font-family: 'Inter', sans-serif;
     transition: all 0.15s;
     white-space: nowrap;
   }
@@ -805,7 +806,7 @@
     color: var(--text);
     font-size: 12px;
     padding: 5px 8px;
-    font-family: 'IBM Plex Sans', sans-serif;
+    font-family: 'Inter', sans-serif;
     margin-top: 6px;
     display: none;
   }
@@ -1005,6 +1006,7 @@
     left: auto;
     z-index: 400;
     margin: 0;
+    border-left: 3px solid var(--accent);
     background: color-mix(in srgb, var(--surface) 94%, transparent);
     backdrop-filter: blur(12px);
     -webkit-backdrop-filter: blur(12px);
@@ -1030,13 +1032,13 @@
     backdrop-filter: blur(14px);
     -webkit-backdrop-filter: blur(14px);
     border: 1px solid var(--border-light);
-    border-radius: 100px;
+    border-radius: 22px;
     padding: 10px 18px;
     box-shadow: 0 20px 60px rgba(0, 0, 0, 0.55), inset 0 1px 0 rgba(255, 255, 255, 0.05);
     animation: toastIn 0.22s cubic-bezier(0.2, 0, 0, 1);
-    white-space: nowrap;
+    flex-wrap: wrap;
     max-width: calc(100vw - 24px);
-    overflow-x: auto;
+    overflow: visible; /* clipping here was hiding the Add-to-list dropdown */
   }
   .selection-bar .sel-count {
     background: var(--accent);
@@ -1386,10 +1388,10 @@
     background: transparent; border: none; cursor: pointer;
     padding: 13px 16px;
     color: var(--text);
-    font-family: 'IBM Plex Sans', sans-serif;
+    font-family: 'Inter', sans-serif;
   }
   .settings-toggle:hover { background: var(--surface-2); }
-  .st-title { font-family: 'Sora', sans-serif; font-size: 13px; font-weight: 600; }
+  .st-title { font-family: 'Inter', sans-serif; font-size: 13px; font-weight: 600; }
   .st-summary { display: flex; gap: 6px; flex-wrap: wrap; }
   .st-summary .key-pill { font-size: 11px; padding: 4px 10px; }
   .st-caret { margin-left: auto; color: var(--text-dim); transition: transform 0.2s; }
@@ -1417,7 +1419,7 @@
     width: 26px; height: 26px; flex-shrink: 0;
     display: flex; align-items: center; justify-content: center;
     background: var(--accent); color: var(--accent-contrast);
-    border-radius: 50%; font-family: 'Sora', sans-serif; font-size: 13px; font-weight: 700;
+    border-radius: 50%; font-family: 'Inter', sans-serif; font-size: 13px; font-weight: 700;
   }
   .qs-step b { display: block; font-size: 14px; margin-bottom: 2px; }
   .qs-step span { font-size: 12px; color: var(--text-dim); line-height: 1.45; }
@@ -1437,6 +1439,69 @@
 
   .stat[data-filter] { cursor: pointer; }
   .stat[data-filter]:hover { border-color: color-mix(in srgb, var(--accent) 45%, var(--border)); }
+
+
+  /* light-mode fixes: brand eye stays dark, scan affordances clear */
+  body.light .logo-eye { background: #101620; border-color: #2a3340; }
+  body.light .next-step { background: color-mix(in srgb, var(--accent) 6%, #ffffff); }
+  body.light .spinner { border-color: var(--border-light); border-top-color: var(--accent); }
+
+
+  /* ===== LISTS: drag-and-drop + fluidity ===== */
+  .row[draggable="true"] { cursor: default; }
+  .row[draggable="true"]:active { cursor: grabbing; }
+  .row.drag-ghost { opacity: 0.45; }
+  body.dragging-leads .tab { outline: 1.5px dashed color-mix(in srgb, var(--accent) 40%, transparent); outline-offset: 2px; }
+  body.dragging-leads .tab[onclick*="switchView('search')"],
+  body.dragging-leads .tab[onclick*="switchView('all')"] { outline: none; opacity: 0.45; }
+  .tab.drop-hover {
+    background: color-mix(in srgb, var(--accent) 18%, var(--surface)) !important;
+    border-color: var(--accent) !important;
+    color: var(--text) !important;
+    transform: scale(1.06);
+  }
+  @keyframes tabPulse {
+    0% { box-shadow: 0 0 0 0 color-mix(in srgb, var(--accent) 55%, transparent); }
+    100% { box-shadow: 0 0 0 14px transparent; }
+  }
+  .tab-pulse { animation: tabPulse 0.8s ease-out 1; }
+  .row-check input[type="checkbox"] { cursor: pointer; }
+
+
+  /* ===== INTER TYPE SYSTEM ===== */
+  body {
+    font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    letter-spacing: -0.011em;       /* Inter's intended UI tracking */
+    font-feature-settings: 'cv11';  /* single-storey a in display sizes reads friendlier */
+  }
+  .header h1, .gate-logo { font-weight: 800; letter-spacing: -0.035em; }
+  .gate-title, .pitch-title, .tpl-panel h3, .st-title { font-weight: 700; letter-spacing: -0.025em; }
+  .stat .value { font-weight: 800; letter-spacing: -0.03em; }
+  .biz-name { letter-spacing: -0.015em; }
+  .btn, .tab, .act-btn, .chip, .filter-btn { font-weight: 500; }
+  .btn-primary, .tab.active { font-weight: 600; }
+  .field label, .results-head, .pitch-section h4, .opp-label, .stat .label, .hist-row.hist-head {
+    font-weight: 600;
+  }
+
+
+  /* ===== SKELETON LOADING ===== */
+  .skel-row { padding: 16px; border-bottom: 1px solid var(--border); }
+  .skel-bar {
+    height: 12px;
+    border-radius: 6px;
+    background: linear-gradient(90deg, var(--surface-2) 25%, var(--border) 50%, var(--surface-2) 75%);
+    background-size: 200% 100%;
+    animation: shimmer 1.4s infinite linear;
+    margin-bottom: 9px;
+  }
+  .skel-bar:last-child { margin-bottom: 0; }
+  @keyframes shimmer { from { background-position: 200% 0; } to { background-position: -200% 0; } }
+  @media (max-width: 900px) {
+    .skel-row { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-lg); margin-bottom: 10px; }
+  }
 
 </style>
 </head>
@@ -1496,7 +1561,7 @@
       <p>The all-seeing lead finder. Batch-search Google Maps for businesses with weak or missing websites.</p>
     </div>
     <div class="header-right">
-      <button class="icon-btn" id="themeToggle" onclick="toggleLightMode()" title="Switch between dark and light mode"></button>
+      <button class="icon-btn" id="themeToggle" onclick="toggleLightMode()" title="Switch between dark and light mode" aria-label="Switch between dark and light mode"></button>
       <div class="profile-group" id="profileGroup">
         <button class="profile-btn" data-profile="Sam" onclick="setProfile('Sam')">Sam</button>
         <button class="profile-btn" data-profile="Jack" onclick="setProfile('Jack')">Jack</button>
@@ -1598,12 +1663,12 @@
   <div class="selection-bar" id="selectionBar"></div>
 
   <!-- ===== STATUS / ERROR ===== -->
-  <div class="status-bar" id="statusBar">
+  <div class="status-bar" id="statusBar" role="status" aria-live="polite">
     <div class="spinner"></div>
     <span id="statusText">Searching...</span>
     <div class="progress-track"><div class="progress-fill" id="progressFill"></div></div>
   </div>
-  <div class="error-box" id="errorBox"></div>
+  <div class="error-box" id="errorBox" role="alert"></div>
 
   <!-- ===== STATS ===== -->
   <div class="stats" id="stats">
@@ -2089,19 +2154,44 @@ async function createList(withSelected) {
   return list;
 }
 
-async function addSelectedToList(listId) {
-  if (demoMode) { showError('List features are disabled in example mode. Run a real search first.'); return; }
-  closeSelMenu();
+let pulseListId = null;
+
+async function addIdsToList(listId, ids) {
+  if (demoMode) { showError('List features are disabled in example mode. Run a real search first.'); return false; }
   const list = lists.find(l => l.id === listId);
-  if (!list || !selectedIds.size) return;
+  if (!list || !ids.length) return false;
   const before = list.leadIds.length;
-  list.leadIds = [...new Set([...list.leadIds, ...selectedIds])];
+  list.leadIds = [...new Set([...list.leadIds, ...ids])];
   const ok = await persistList(list);
-  if (!ok) return;
-  setStatus(true, (list.leadIds.length - before) + ' lead(s) added to "' + list.name + '" (' + (selectedIds.size - (list.leadIds.length - before)) + ' already there)', 100);
+  if (!ok) return false;
+  const added = list.leadIds.length - before;
+  const dupes = ids.length - added;
+  setStatus(true, added + ' added to "' + list.name + '"' + (dupes > 0 ? ' (' + dupes + ' already there)' : ''), 100);
   setTimeout(() => setStatus(false), 2200);
+  pulseListId = listId;
+  renderTabs();
+  return true;
+}
+
+async function addSelectedToList(listId) {
+  closeSelMenu();
+  const ok = await addIdsToList(listId, [...selectedIds]);
+  if (ok) { clearSelection(); render(); }
+}
+
+async function moveSelectedToList(targetId) {
+  closeSelMenu();
+  const source = lists.find(l => l.id === viewMode);
+  if (!source) return;
+  const ids = [...selectedIds];
+  const ok = await addIdsToList(targetId, ids);
+  if (!ok) return;
+  const idSet = new Set(ids);
+  source.leadIds = source.leadIds.filter(id => !idSet.has(id));
+  await persistList(source);
   clearSelection();
   renderTabs();
+  switchView(source.id);
 }
 
 async function removeSelectedFromList() {
@@ -2233,6 +2323,9 @@ async function switchView(mode) {
         allResults = everything.filter(r => idSet.has(r.id));
         if (list && list.leadIds.length && !allResults.length) {
           showError('This list references ' + list.leadIds.length + ' lead(s) that are not in the database - an earlier save probably failed. Re-import the CSV (or re-run the search) and they will reconnect to this list automatically.');
+        } else if (list && !list.leadIds.length) {
+          setStatus(true, '"' + list.name + '" is empty - select leads in any view and Add to list, or drag rows onto this tab.', 100);
+          setTimeout(() => setStatus(false), 4000);
         }
       }
       setStatus(false);
@@ -2262,9 +2355,14 @@ function renderTabs() {
   h += '<button class="tab ' + (viewMode === 'search' ? 'active' : '') + '" onclick="switchView(\'search\')">Search results' + (lastSearchResults.length ? ' <span class="count">' + lastSearchResults.length + '</span>' : '') + '</button>';
   h += '<button class="tab ' + (viewMode === 'all' ? 'active' : '') + '" onclick="switchView(\'all\')" title="Every lead ever pulled, saved automatically">All leads</button>';
   for (const l of lists) {
-    h += '<button class="tab ' + (viewMode === l.id ? 'active' : '') + '" onclick="switchView(\'' + escAttr(l.id) + '\')">' + esc(l.name) + ' <span class="count">' + l.leadIds.length + '</span></button>';
+    const pulse = (pulseListId === l.id) ? ' tab-pulse' : '';
+    h += '<button class="tab' + (viewMode === l.id ? ' active' : '') + pulse + '" onclick="switchView(\'' + escAttr(l.id) + '\')"'
+      + (viewMode === l.id ? ' ondblclick="renameCurrentList()" title="Double-click to rename. Drag leads here to add them."' : ' title="Drag leads onto this tab to add them"')
+      + ' ondragover="tabDragOver(event)" ondragleave="tabDragLeave(event)" ondrop="tabDrop(event, \'' + escAttr(l.id) + '\')">'
+      + esc(l.name) + ' <span class="count">' + l.leadIds.length + '</span></button>';
   }
-  h += '<button class="tab new-list" onclick="createList(false)" title="Create an empty list, then select leads and add them to it">+ New list</button>';
+  h += '<button class="tab new-list" onclick="createList(false)" title="Create a list - or drag leads here to make a new list from them" ondragover="tabDragOver(event)" ondragleave="tabDragLeave(event)" ondrop="tabDropNew(event)">+ New list</button>';
+  if (pulseListId) setTimeout(() => { pulseListId = null; }, 900);
 
   if (viewMode !== 'search' && viewMode !== 'all') {
     h += '<span class="list-actions">';
@@ -2280,13 +2378,88 @@ function renderTabs() {
   bar.innerHTML = h;
 }
 
+/* ===== DRAG AND DROP (rows -> list tabs) ===== */
+let dragIds = [];
+
+function rowDragStart(e, id) {
+  // dragging a selected row carries the whole selection; otherwise just that row
+  dragIds = selectedIds.has(id) ? [...selectedIds] : [id];
+  e.dataTransfer.effectAllowed = 'copy';
+  try { e.dataTransfer.setData('text/plain', String(dragIds.length)); } catch (err) {}
+  e.currentTarget.classList.add('drag-ghost');
+  document.body.classList.add('dragging-leads');
+}
+
+function rowDragEnd(e) {
+  e.currentTarget.classList.remove('drag-ghost');
+  document.body.classList.remove('dragging-leads');
+  document.querySelectorAll('.tab.drop-hover').forEach(t => t.classList.remove('drop-hover'));
+}
+
+function tabDragOver(e) {
+  e.preventDefault();
+  e.dataTransfer.dropEffect = 'copy';
+  e.currentTarget.classList.add('drop-hover');
+}
+
+function tabDragLeave(e) {
+  e.currentTarget.classList.remove('drop-hover');
+}
+
+async function tabDrop(e, listId) {
+  e.preventDefault();
+  e.currentTarget.classList.remove('drop-hover');
+  document.body.classList.remove('dragging-leads');
+  if (!dragIds.length) return;
+  const ok = await addIdsToList(listId, dragIds);
+  if (ok && dragIds.some(id => selectedIds.has(id))) { clearSelection(); render(); }
+  dragIds = [];
+}
+
+async function tabDropNew(e) {
+  e.preventDefault();
+  e.currentTarget.classList.remove('drop-hover');
+  document.body.classList.remove('dragging-leads');
+  if (!dragIds.length) return;
+  const name = prompt('Name for the new list (' + dragIds.length + ' lead' + (dragIds.length === 1 ? '' : 's') + '):');
+  if (!name || !name.trim()) { dragIds = []; return; }
+  const list = { id: genId(), name: name.trim(), leadIds: [...new Set(dragIds)] };
+  const ok = await persistList(list);
+  if (ok) {
+    lists.push(list);
+    pulseListId = list.id;
+    renderTabs();
+    setStatus(true, dragIds.length + ' lead(s) filed into new list "' + list.name + '"', 100);
+    setTimeout(() => setStatus(false), 2200);
+    if (dragIds.some(id => selectedIds.has(id))) { clearSelection(); render(); }
+  }
+  dragIds = [];
+}
+
 /* ===== SELECTION ===== */
 function clearSelection() {
   selectedIds = new Set();
   renderSelectionBar();
 }
-function toggleSelect(id) {
+let lastSelectedId = null;
+
+function toggleSelect(e, id) {
+  // shift-click selects the whole range since the last clicked checkbox
+  if (e && e.shiftKey && lastSelectedId && lastSelectedId !== id) {
+    const order = getFiltered().map(r => r.id);
+    const a = order.indexOf(lastSelectedId);
+    const b = order.indexOf(id);
+    if (a !== -1 && b !== -1) {
+      const [from, to] = a < b ? [a, b] : [b, a];
+      for (let i = from; i <= to; i++) selectedIds.add(order[i]);
+      lastSelectedId = id;
+      renderSelectionBar();
+      render();
+      return;
+    }
+  }
   if (selectedIds.has(id)) selectedIds.delete(id); else selectedIds.add(id);
+  lastSelectedId = id;
   renderSelectionBar();
   const box = document.getElementById('chk-' + id);
   if (box) box.checked = selectedIds.has(id);
@@ -2310,7 +2483,13 @@ function renderSelectionBar() {
     + '<button onclick="createList(true)" style="border-top: 1px solid var(--border);">+ New list with selection</button>'
     + '</div></span>';
   if (viewMode !== 'search' && viewMode !== 'all') {
-    h += '<button class="btn btn-ghost btn-sm" onclick="removeSelectedFromList()">Remove from this list</button>';
+    const others = lists.filter(l => l.id !== viewMode);
+    if (others.length) {
+      h += '<span class="sel-menu-wrap"><button class="btn btn-ghost btn-sm" onclick="toggleMenu(event, \'moveListMenu\')">Move to ▾</button><div class="sel-menu" id="moveListMenu">'
+        + others.map(l => '<button onclick="moveSelectedToList(\'' + escAttr(l.id) + '\')">' + esc(l.name) + ' (' + l.leadIds.length + ')</button>').join('')
+        + '</div></span>';
+    }
+    h += '<button class="btn btn-ghost btn-sm" onclick="removeSelectedFromList()">Remove</button>';
   }
   h += '<button class="btn btn-ghost btn-sm" onclick="deleteSelectedLeads()" style="color: var(--danger); border-color: rgba(248,113,113,0.35);">Delete</button>';
   h += '<button class="btn btn-ghost btn-sm" onclick="clearSelection(); render();">Clear selection</button>';
@@ -2869,7 +3048,14 @@ function closePitch() {
   document.getElementById('pitchModal').classList.remove('open');
 }
 
-document.addEventListener('keydown', e => { if (e.key === 'Escape') closePitch(); });
+document.addEventListener('keydown', e => {
+  if (e.key !== 'Escape') return;
+  const pitchOpen = document.getElementById('pitchModal').classList.contains('open');
+  const gemOpen = document.getElementById('geminiModal').classList.contains('open');
+  if (pitchOpen) { closePitch(); return; }
+  if (gemOpen) { closeGemini(); return; }
+  if (selectedIds.size) { clearSelection(); render(); }
+});
 
 /* ===== DEEP AUDIT (Google PageSpeed Insights) ===== */
 let psiRunning = false;
@@ -3313,7 +3499,9 @@ async function scanSites() {
 
   scanRunning = true;
   const btn = document.getElementById('emailBtn');
+  const btnOriginal = btn.innerHTML;
   btn.disabled = true;
+  btn.innerHTML = '<span class="spinner" style="width:13px;height:13px;border-width:2px;"></span>Scanning...';
   document.getElementById('errorBox').style.display = 'none';
 
   let done = 0, found = 0;
@@ -3337,6 +3525,7 @@ async function scanSites() {
   setStatus(false);
   scanRunning = false;
   btn.disabled = false;
+  btn.innerHTML = btnOriginal;
   render();
 
   if (found) {
@@ -3488,6 +3677,7 @@ async function runSearch() {
   }
 
   const locations = locationRaw.split(',').map(s => s.trim()).filter(Boolean);
+  showSearchSkeleton();
   document.getElementById('searchBtn').disabled = true;
   allResults = [];
   const seenIds = new Set();
@@ -3618,7 +3808,9 @@ function render() {
   document.getElementById('resultCount').textContent = countText;
 
   if (!filtered.length) {
-    el.innerHTML = '<div class="empty">No results match the current filters.</div>';
+    el.innerHTML = allResults.length
+      ? '<div class="empty">' + allResults.length + ' lead' + (allResults.length === 1 ? ' is' : 's are') + ' in this view, but the current filters hide ' + (allResults.length === 1 ? 'it' : 'them all') + '.<br><br><button class="btn btn-ghost btn-sm" onclick="resetFilters()">Show everything</button></div>'
+      : '<div class="empty">Nothing here yet. Run a search above, or open All leads to see what\'s saved.</div>';
     return;
   }
 
@@ -3630,7 +3822,7 @@ function render() {
 
   const filteredAllSelected = filtered.length && filtered.every(r => selectedIds.has(r.id));
   let html = '<div class="results-head">'
-    + '<span class="row-check"><input type="checkbox" id="chkAll" onclick="toggleSelectAll()" ' + (filteredAllSelected ? 'checked' : '') + ' title="Select all visible leads"></span>'
+    + '<span class="row-check"><input type="checkbox" id="chkAll" onclick="toggleSelectAll()" ' + (filteredAllSelected ? 'checked' : '') + ' title="Select all visible leads" aria-label="Select all visible leads"></span>'
     + '<span class="sortable" onclick="setSort(\'name\')">Business ' + sortArrow('name') + '</span>'
     + '<span>Address</span>'
     + '<span>Phone</span>'
@@ -3644,6 +3836,7 @@ function render() {
     const p = pipeline[r.id] || {};
     let rowClass = p.status === 'contacted' ? 'row is-contacted' : (p.status === 'skipped' ? 'row is-skipped' : 'row');
     if (selectedIds.has(r.id)) rowClass += ' is-selected';
+    const dragAttrs = ' draggable="true" ondragstart="rowDragStart(event, \'' + escAttr(r.id) + '\')" ondragend="rowDragEnd(event)"';
 
     const tag = r.temp === 'hot' ? '<span class="tag tag-hot">HOT</span>'
       : r.temp === 'warm' ? '<a href="' + escAttr(r.website) + '" target="_blank" rel="noopener" class="tag tag-warm">WARM</a>'
@@ -3704,8 +3897,8 @@ function render() {
     const angleText = primaryAngle(r);
     const angleLine = angleText ? '<div class="angle-line">' + angleText + '</div>' : '';
 
-    html += '<div class="' + rowClass + '">'
-      + '<div class="row-check"><input type="checkbox" id="chk-' + escAttr(r.id) + '" onclick="toggleSelect(\'' + escAttr(r.id) + '\')" ' + (selectedIds.has(r.id) ? 'checked' : '') + '></div>'
+    html += '<div class="' + rowClass + '"' + dragAttrs + '>'
+      + '<div class="row-check"><input type="checkbox" id="chk-' + escAttr(r.id) + '" onclick="toggleSelect(event, \'' + escAttr(r.id) + '\')" ' + (selectedIds.has(r.id) ? 'checked' : '') + ' title="Tick to select - shift-click selects a range" aria-label="Select ' + escAttr(r.name) + '"></div>'
       + '<div><div class="biz-name">' + tag + '<span>' + esc(r.name) + '</span></div>' + links + emailLine + socialRow + metaRow + oppRow + angleLine + attribution + notePreview + '</div>'
       + '<div class="addr">' + esc(r.address) + '</div>'
       + '<div class="phone">' + phone + '</div>'
@@ -4156,6 +4349,29 @@ function updateNextStep() {
   }
   el.innerHTML = msg;
   el.style.display = 'flex';
+}
+
+function showSearchSkeleton() {
+  const el = document.getElementById('results');
+  el.style.display = 'block';
+  let h = '';
+  for (let i = 0; i < 5; i++) {
+    h += '<div class="skel-row">'
+      + '<div class="skel-bar" style="width:' + (35 + (i * 7) % 30) + '%"></div>'
+      + '<div class="skel-bar" style="width:' + (55 + (i * 11) % 35) + '%"></div>'
+      + '<div class="skel-bar" style="width:' + (20 + (i * 5) % 20) + '%"></div>'
+      + '</div>';
+  }
+  el.innerHTML = h;
+}
+
+function resetFilters() {
+  setFilterByName('all');
+  document.getElementById('minReviews').value = '0';
+  document.getElementById('phoneOnly').checked = false;
+  document.getElementById('newOnly').checked = false;
+  document.getElementById('hideDone').checked = false;
+  render();
 }
 
 function statFilter(name) {

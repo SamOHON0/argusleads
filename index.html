@@ -214,6 +214,31 @@
   .attribution { font-size: 11px; color: var(--text-dim); margin-top: 5px; }
   .attribution strong { color: var(--text-dim); font-weight: 600; }
 
+  /* Opportunities: square badges so they read differently from signal pills */
+  .opp-row { display: flex; gap: 6px; margin-top: 7px; flex-wrap: wrap; align-items: center; }
+  .opp-label { font-size: 10px; font-weight: 600; color: var(--text-dim); text-transform: uppercase; letter-spacing: 0.07em; }
+  .opp-chip {
+    font-size: 10px; font-weight: 700; letter-spacing: 0.05em;
+    padding: 3px 8px; border-radius: 6px; text-transform: uppercase;
+  }
+  .opp-web { background: color-mix(in srgb, var(--hot) 16%, transparent); color: var(--hot); border: 1px solid color-mix(in srgb, var(--hot) 40%, transparent); }
+  .opp-rebuild { background: color-mix(in srgb, var(--danger) 14%, transparent); color: var(--danger); border: 1px solid color-mix(in srgb, var(--danger) 38%, transparent); }
+  .opp-smm { background: color-mix(in srgb, var(--warm) 14%, transparent); color: var(--warm); border: 1px solid color-mix(in srgb, var(--warm) 38%, transparent); }
+  .opp-ads { background: color-mix(in srgb, var(--cold) 14%, transparent); color: var(--cold); border: 1px solid color-mix(in srgb, var(--cold) 38%, transparent); }
+  .opp-bundle {
+    background: linear-gradient(90deg, color-mix(in srgb, var(--hot) 18%, transparent), color-mix(in srgb, var(--warm) 18%, transparent));
+    color: var(--text); border: 1px solid var(--border-light);
+  }
+  .angle-line {
+    margin-top: 6px;
+    font-size: 12.5px;
+    line-height: 1.45;
+    color: var(--text-dim);
+    padding-left: 10px;
+    border-left: 2px solid color-mix(in srgb, var(--accent) 55%, transparent);
+  }
+  .angle-line b { color: var(--text); font-weight: 600; }
+
   .score-badge { font-family: 'Sora', sans-serif; font-size: 15px; font-weight: 700; }
   .score-badge.s-high { color: var(--hot); }
   .score-badge.s-mid { color: var(--warm); }
@@ -1249,6 +1274,170 @@
     .header h1 { font-size: 18px; }
   }
 
+
+  /* =========================================================
+     LIGHT MODE
+     ========================================================= */
+  .icon-btn {
+    width: 38px; height: 38px;
+    display: inline-flex; align-items: center; justify-content: center;
+    background: var(--surface-2);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    cursor: pointer;
+    transition: all 0.18s cubic-bezier(0.2, 0, 0, 1);
+    flex-shrink: 0;
+  }
+  .icon-btn:hover { border-color: var(--border-light); transform: translateY(-1px); box-shadow: 0 4px 12px rgba(0,0,0,0.2); }
+
+  body.light {
+    --bg: #f4f6f9;
+    --surface: #ffffff;
+    --surface-2: #eef1f6;
+    --border: #e2e8f0;
+    --border-light: #c8d2e0;
+    --text: #14202e;
+    --text-dim: #5a6b80;
+    --hot: #16a34a;
+    --warm: #d97706;
+    --cold: #2563eb;
+    --danger: #dc2626;
+    --accent: #16a34a;
+    --accent-dark: #15803d;
+    --accent-contrast: #ffffff;
+    color-scheme: light;
+  }
+  body.light.theme-jack { --accent: #2563eb; --accent-dark: #1d4ed8; --accent-contrast: #ffffff; }
+  body.light.theme-guest { --accent: #dc2626; --accent-dark: #b91c1c; --accent-contrast: #ffffff; }
+
+  body.light {
+    background:
+      radial-gradient(1100px 480px at 50% -120px, color-mix(in srgb, var(--accent) 6%, transparent), transparent 70%),
+      var(--bg);
+  }
+
+  /* softer elevation on white */
+  body.light .key-section, body.light .search-section, body.light .stat,
+  body.light .results, body.light .tpl-panel, body.light .selection-bar,
+  body.light .header {
+    box-shadow: 0 1px 2px rgba(15, 23, 42, 0.04), 0 8px 24px rgba(15, 23, 42, 0.06);
+  }
+  body.light .header { background: color-mix(in srgb, #ffffff 86%, transparent); }
+  body.light .row { box-shadow: none; }
+  body.light .row:nth-child(even) { background: rgba(15, 23, 42, 0.018); }
+  body.light .row:hover { background: var(--surface-2); }
+  body.light .modal-card { box-shadow: 0 24px 80px rgba(15, 23, 42, 0.22); }
+  body.light .modal-overlay { background: rgba(15, 23, 42, 0.35); }
+  body.light .export-menu, body.light .sel-menu { box-shadow: 0 16px 48px rgba(15, 23, 42, 0.18); }
+  body.light .login-card { box-shadow: 0 24px 70px rgba(15, 23, 42, 0.15); }
+  body.light .status-bar, body.light .selection-bar.open {
+    background: color-mix(in srgb, #ffffff 94%, transparent);
+    box-shadow: 0 16px 48px rgba(15, 23, 42, 0.18);
+  }
+  body.light .btn-primary { box-shadow: 0 4px 14px color-mix(in srgb, var(--accent) 30%, transparent); }
+  body.light .btn-ghost:hover { box-shadow: 0 4px 12px rgba(15, 23, 42, 0.1); }
+  body.light .icon-btn:hover { box-shadow: 0 4px 12px rgba(15, 23, 42, 0.1); }
+  body.light .progress-track { background: var(--border); }
+
+  /* score colours need depth on white */
+  body.light .score-badge.s-high { color: #15803d; }
+  body.light .score-badge.s-mid { color: #b45309; }
+
+  /* tags keep their tints but with readable text */
+  body.light .tag-hot { background: rgba(22, 163, 74, 0.1); border-color: rgba(22, 163, 74, 0.35); }
+  body.light .tag-warm { background: rgba(217, 119, 6, 0.1); border-color: rgba(217, 119, 6, 0.3); }
+  body.light .tag-cold { background: rgba(37, 99, 235, 0.08); border-color: rgba(37, 99, 235, 0.3); }
+  body.light .act-btn.on-contacted { background: rgba(22, 163, 74, 0.1); border-color: rgba(22, 163, 74, 0.35); }
+  body.light .act-btn.on-skipped { background: rgba(220, 38, 38, 0.08); border-color: rgba(220, 38, 38, 0.3); }
+  body.light .act-btn.wa-btn { background: rgba(37, 211, 102, 0.12); color: #16863e; border-color: rgba(22, 163, 74, 0.4); }
+  body.light .demo-banner { background: rgba(37, 99, 235, 0.06); }
+  body.light .error-box { background: rgba(220, 38, 38, 0.06); }
+  body.light .meta-chip.good { background: rgba(22, 163, 74, 0.1); }
+  body.light .meta-chip.warn { background: rgba(217, 119, 6, 0.1); }
+  body.light .meta-chip.bad { background: rgba(220, 38, 38, 0.08); }
+  body.light .meta-chip.info { background: rgba(37, 99, 235, 0.08); }
+
+  /* gates in light: bright room, the dark eyes really pop */
+  body.light .gate { background: var(--bg); }
+  body.light .gate-logo, body.light .gate-title { color: var(--text); }
+  body.light .eye-wrap { opacity: 0.9; }
+
+  /* checkbox + selects */
+  body.light input[type="checkbox"] { background: #ffffff; border-color: var(--border-light); }
+  body.light select { background: #ffffff; }
+  body.light .field input, body.light .field select,
+  body.light .key-section input, body.light .tpl-grid textarea,
+  body.light .login-card input, body.light .note-input { background: #ffffff; }
+
+
+  /* ===== PRODUCTIONISATION: settings, quickstart, guidance ===== */
+  .settings-wrap {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-lg);
+    margin-bottom: 16px;
+    overflow: hidden;
+    box-shadow: inset 0 1px 0 rgba(255,255,255,0.035), 0 10px 30px rgba(0,0,0,0.28);
+  }
+  body.light .settings-wrap { box-shadow: 0 1px 2px rgba(15,23,42,0.04), 0 8px 24px rgba(15,23,42,0.06); }
+  .settings-toggle {
+    width: 100%;
+    display: flex; align-items: center; gap: 12px;
+    background: transparent; border: none; cursor: pointer;
+    padding: 13px 16px;
+    color: var(--text);
+    font-family: 'IBM Plex Sans', sans-serif;
+  }
+  .settings-toggle:hover { background: var(--surface-2); }
+  .st-title { font-family: 'Sora', sans-serif; font-size: 13px; font-weight: 600; }
+  .st-summary { display: flex; gap: 6px; flex-wrap: wrap; }
+  .st-summary .key-pill { font-size: 11px; padding: 4px 10px; }
+  .st-caret { margin-left: auto; color: var(--text-dim); transition: transform 0.2s; }
+  .settings-wrap.open .st-caret { transform: rotate(180deg); }
+  .settings-body { display: none; padding: 0 16px 14px; }
+  .settings-wrap.open .settings-body { display: block; }
+  .settings-body .key-section {
+    margin-bottom: 10px; padding: 12px 0 0; border: none; background: transparent; box-shadow: none; border-radius: 0;
+  }
+
+  .quickstart {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-lg);
+    padding: 18px;
+    margin-bottom: 16px;
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 14px;
+    box-shadow: inset 0 1px 0 rgba(255,255,255,0.035), 0 10px 30px rgba(0,0,0,0.28);
+  }
+  body.light .quickstart { box-shadow: 0 1px 2px rgba(15,23,42,0.04), 0 8px 24px rgba(15,23,42,0.06); }
+  .qs-step { display: flex; gap: 12px; align-items: flex-start; }
+  .qs-num {
+    width: 26px; height: 26px; flex-shrink: 0;
+    display: flex; align-items: center; justify-content: center;
+    background: var(--accent); color: var(--accent-contrast);
+    border-radius: 50%; font-family: 'Sora', sans-serif; font-size: 13px; font-weight: 700;
+  }
+  .qs-step b { display: block; font-size: 14px; margin-bottom: 2px; }
+  .qs-step span { font-size: 12px; color: var(--text-dim); line-height: 1.45; }
+  .qs-actions { grid-column: 1 / -1; display: flex; gap: 8px; align-items: center; border-top: 1px solid var(--border); padding-top: 12px; }
+  @media (max-width: 900px) { .quickstart { grid-template-columns: 1fr; } }
+
+  .next-step {
+    align-items: center; gap: 10px;
+    background: color-mix(in srgb, var(--accent) 7%, var(--surface));
+    border: 1px solid color-mix(in srgb, var(--accent) 30%, transparent);
+    border-radius: var(--radius);
+    padding: 10px 14px;
+    font-size: 13px;
+    margin-bottom: 12px;
+  }
+  .next-step b { color: var(--accent); }
+
+  .stat[data-filter] { cursor: pointer; }
+  .stat[data-filter]:hover { border-color: color-mix(in srgb, var(--accent) 45%, var(--border)); }
+
 </style>
 </head>
 <body>
@@ -1307,6 +1496,7 @@
       <p>The all-seeing lead finder. Batch-search Google Maps for businesses with weak or missing websites.</p>
     </div>
     <div class="header-right">
+      <button class="icon-btn" id="themeToggle" onclick="toggleLightMode()" title="Switch between dark and light mode"></button>
       <div class="profile-group" id="profileGroup">
         <button class="profile-btn" data-profile="Sam" onclick="setProfile('Sam')">Sam</button>
         <button class="profile-btn" data-profile="Jack" onclick="setProfile('Jack')">Jack</button>
@@ -1319,19 +1509,26 @@
     </div>
   </div>
 
-  <!-- ===== API KEY ===== -->
-  <div class="key-section">
-    <input type="password" id="apiKey" placeholder="Google Maps API key (AIza...) - needs Places API (New) enabled" autocomplete="off">
-    <div class="key-pill" id="keyPill">No key</div>
-    <label class="remember-key"><input type="checkbox" id="rememberKey"> Remember on this device</label>
-  </div>
-
-  <!-- ===== CLOUD SYNC (SUPABASE) ===== -->
-  <div class="key-section" id="cloudSection">
-    <input type="text" id="sbUrl" placeholder="Supabase project URL (https://xxxx.supabase.co)" autocomplete="off" style="flex: 1.2;">
-    <input type="password" id="sbKey" placeholder="Supabase anon key (eyJ...)" autocomplete="off">
-    <div class="key-pill" id="cloudPill">Cloud off</div>
-    <button class="btn btn-ghost btn-sm" onclick="switchView('all')">Load saved leads</button>
+  <!-- ===== SETTINGS (collapsible once configured) ===== -->
+  <div class="settings-wrap" id="settingsWrap">
+    <button class="settings-toggle" onclick="toggleSettings()">
+      <span class="st-title">Settings</span>
+      <span class="st-summary" id="settingsSummary"></span>
+      <span class="st-caret" id="settingsCaret">&#9662;</span>
+    </button>
+    <div class="settings-body" id="settingsBody">
+      <div class="key-section">
+        <input type="password" id="apiKey" placeholder="Google Maps API key (AIza...) - needs Places API (New) enabled" autocomplete="off">
+        <div class="key-pill" id="keyPill">No key</div>
+        <label class="remember-key"><input type="checkbox" id="rememberKey"> Remember on this device</label>
+      </div>
+      <div class="key-section" id="cloudSection" style="margin-bottom: 0;">
+        <input type="text" id="sbUrl" placeholder="Supabase project URL (https://xxxx.supabase.co)" autocomplete="off" style="flex: 1.2;">
+        <input type="password" id="sbKey" placeholder="Supabase anon key (eyJ...)" autocomplete="off">
+        <div class="key-pill" id="cloudPill">Cloud off</div>
+        <button class="btn btn-ghost btn-sm" onclick="switchView('all')">Load saved leads</button>
+      </div>
+    </div>
   </div>
 
   <!-- ===== SEARCH ===== -->
@@ -1382,6 +1579,18 @@
     <button onclick="exitDemo()">Clear example</button>
   </div>
 
+  <!-- ===== QUICK START (first run) ===== -->
+  <div class="quickstart" id="quickStart" style="display:none;">
+    <div class="qs-step"><span class="qs-num">1</span><div><b>Search a vertical</b><span>Pick a chip above or type one - batch several towns with commas.</span></div></div>
+    <div class="qs-step"><span class="qs-num">2</span><div><b>Scan websites</b><span>Pulls emails, socials, owners and grades every site - free.</span></div></div>
+    <div class="qs-step"><span class="qs-num">3</span><div><b>Work the list</b><span>Sort by score, read the angle line, hit WhatsApp or Autopitch.</span></div></div>
+    <div class="qs-actions">
+      <button class="btn btn-ghost btn-sm" onclick="switchView('all')">Open saved leads</button>
+      <button class="btn btn-ghost btn-sm" onclick="loadDemo()">See an example</button>
+      <button class="btn btn-ghost btn-sm" onclick="dismissQuickstart()" style="margin-left:auto;">Dismiss</button>
+    </div>
+  </div>
+
   <!-- ===== TABS ===== -->
   <div class="tab-bar" id="tabBar"></div>
 
@@ -1398,11 +1607,11 @@
 
   <!-- ===== STATS ===== -->
   <div class="stats" id="stats">
-    <div class="stat"><div class="label">Total found</div><div class="value" id="statTotal">0</div></div>
-    <div class="stat"><div class="label">Hot · no site</div><div class="value hot" id="statHot">0</div></div>
-    <div class="stat"><div class="label">Warm · social only</div><div class="value warm" id="statWarm">0</div></div>
-    <div class="stat"><div class="label">Cold · has site</div><div class="value cold" id="statCold">0</div></div>
-    <div class="stat"><div class="label">Lead rate</div><div class="value" id="statRate">0%</div></div>
+    <div class="stat" data-filter="all" onclick="statFilter('all')" title="Click: show everything"><div class="label">Total found</div><div class="value" id="statTotal">0</div></div>
+    <div class="stat" data-filter="hot" onclick="statFilter('hot')" title="Click: filter to hot leads"><div class="label">Hot · no site</div><div class="value hot" id="statHot">0</div></div>
+    <div class="stat" data-filter="warm" onclick="statFilter('warm')" title="Click: filter to warm leads"><div class="label">Warm · social only</div><div class="value warm" id="statWarm">0</div></div>
+    <div class="stat" data-filter="cold" onclick="statFilter('cold')" title="Click: filter to leads with websites"><div class="label">Cold · has site</div><div class="value cold" id="statCold">0</div></div>
+    <div class="stat" data-filter="leads" onclick="statFilter('leads')" title="Click: filter to hot + warm"><div class="label">Lead rate</div><div class="value" id="statRate">0%</div></div>
   </div>
 
   <!-- ===== TOOLBAR ===== -->
@@ -1414,6 +1623,7 @@
         <button class="filter-btn" data-filter="warm" onclick="setFilter(this)"><span class="dot" style="background:var(--warm)"></span>Warm</button>
         <button class="filter-btn" data-filter="cold" onclick="setFilter(this)"><span class="dot" style="background:var(--cold)"></span>Cold</button>
         <button class="filter-btn" data-filter="badsite" onclick="setFilter(this)"><span class="dot" style="background:var(--danger)"></span>Bad site</button>
+        <button class="filter-btn" data-filter="nosocial" onclick="setFilter(this)" title="SMM prospects: scanned leads with zero social links found, plus hot leads with no social on their listing"><span class="dot" style="background:var(--warm)"></span>No socials</button>
         <button class="filter-btn" data-filter="all" onclick="setFilter(this)">All</button>
       </div>
       <div class="mini-filter">
@@ -1483,9 +1693,12 @@
     <button class="btn btn-ghost btn-sm" onclick="resetTemplates()">Reset to defaults</button>
   </div>
 
+  <!-- ===== NEXT STEP HINT ===== -->
+  <div class="next-step" id="nextStep" style="display:none;"></div>
+
   <!-- ===== LEGEND ===== -->
   <div class="legend" id="legend">
-    <b class="l-hot">HOT</b> no website &middot; <b class="l-warm">WARM</b> social media only &middot; <b class="l-cold">SITE</b> has a website &middot; <b>Score</b> ranks how good a prospect each lead is (higher = better) &middot; Hover any chip or button for what it does
+    <b class="l-hot">HOT</b> no website &middot; <b class="l-warm">WARM</b> social only &middot; <b class="l-cold">SITE</b> has a website &middot; <b>Score</b> ranks prospect quality (hover it for the breakdown) &middot; <b>PITCH</b> badges show which services to sell, with the angle underneath &middot; Hover anything for detail
   </div>
 
   <!-- ===== RESULTS ===== -->
@@ -1528,7 +1741,8 @@ let currentProfile = 'Guest';
 function setProfile(name) {
   currentProfile = name;
   store.set('st_profile', name);
-  document.body.className = 'theme-' + name.toLowerCase();
+  document.body.classList.remove('theme-sam', 'theme-jack', 'theme-guest');
+  document.body.classList.add('theme-' + name.toLowerCase());
   document.querySelectorAll('.profile-btn').forEach(b => {
     b.classList.toggle('active', b.dataset.profile === name);
   });
@@ -2528,6 +2742,50 @@ function fillTemplate(r) {
 
 function findLead(id) { return allResults.find(r => r.id === id); }
 
+/* ===== OPPORTUNITY + ANGLE SUMMARY (the at-a-glance full picture) ===== */
+function computeOpportunities(r) {
+  const opps = [];
+  const noSocials = !Object.keys(r.socials || {}).length && (r.temp === 'hot' || !!r.siteGrade);
+  const badSite = r.temp === 'cold' && (r.siteGrade === 'D' || r.siteGrade === 'F');
+
+  if (r.temp === 'hot') opps.push({ key: 'WEBSITE', cls: 'opp-web' });
+  if (r.temp === 'warm') opps.push({ key: 'WEBSITE', cls: 'opp-web' });
+  if (badSite) opps.push({ key: 'REBUILD', cls: 'opp-rebuild' });
+  if (noSocials) opps.push({ key: 'SOCIALS', cls: 'opp-smm' });
+  if (r.runsAds && (r.temp !== 'cold' || badSite)) opps.push({ key: 'AD WASTE', cls: 'opp-ads' });
+  if (r.temp === 'hot' && noSocials) opps.push({ key: 'BUNDLE', cls: 'opp-bundle' });
+  return opps;
+}
+
+function primaryAngle(r) {
+  const noSocials = !Object.keys(r.socials || {}).length && (r.temp === 'hot' || !!r.siteGrade);
+  const badSite = r.temp === 'cold' && (r.siteGrade === 'D' || r.siteGrade === 'F');
+  const reviews = r.rating && r.reviewCount ? r.rating + '\u2605 \u00d7 ' + r.reviewCount : '';
+
+  if (r.temp === 'hot' && noSocials) return '<b>Invisible online</b> - no site, no socials' + (reviews ? ', yet ' + reviews + ' reviews' : '') + '. Pitch the full presence retainer: site + socials in one monthly plan.';
+  if (r.runsAds && badSite) return '<b>Paying for traffic, losing it at the door</b> - ' + esc(r.runsAds) + ' ads landing on a grade-' + r.siteGrade + ' site. Lead with the wasted spend.';
+  if (r.temp === 'hot') return '<b>Demo-first website pitch</b>' + (reviews ? ' - ' + reviews + ' reviews with nowhere to send people' : ' - strong listing, no site') + '. Build the demo before the call.';
+  if (r.temp === 'warm') return '<b>Own the audience</b> - social page works but Google sends searchers to competitors. Site as the hub their socials feed.';
+  if (badSite) return '<b>Side-by-side rebuild</b> - grade ' + r.siteGrade + (r.siteIssues && r.siteIssues.length ? ' (' + esc(r.siteIssues.slice(0, 2).join(', ').toLowerCase()) + ')' : '') + '. Demo next to their site does the talking.';
+  if (noSocials) return '<b>SMM pitch</b> - decent site, zero social presence found. Run the AI social audit to confirm, then pitch management.';
+  if (r.siteGrade === 'C') return '<b>Soft rebuild angle</b> - site is mediocre (grade C). Worth a demo if the vertical is a priority.';
+  return '';
+}
+
+function scoreBreakdown(r) {
+  const parts = [];
+  parts.push(r.temp === 'hot' ? 'No website +35' : r.temp === 'warm' ? 'Social-only +28' : 'Has site +8');
+  if (r.temp === 'cold' && (r.siteGrade === 'D' || r.siteGrade === 'F')) parts.push('Bad site (pitchable) +20');
+  parts.push('Reviews +' + Math.min(20, Math.round(Math.log10((r.reviewCount || 0) + 1) * 10)));
+  if (r.rating) parts.push('Rating +' + Math.max(0, Math.min(12, Math.round((r.rating - 3.5) * 8))));
+  if (r.phone) parts.push('Has phone +8');
+  if (r.email) parts.push('Has email +5');
+  if (Object.keys(r.socials || {}).length) parts.push('Socials found +4');
+  if (r.runsAds) parts.push('Runs ads (budget) +8');
+  if (isReviewRecent(r.lastReview)) parts.push('Recently active +8');
+  return parts.join(' \u00b7 ');
+}
+
 /* ===== AUTOPITCH ===== */
 function buildPitch(r) {
   const points = [];
@@ -2674,6 +2932,7 @@ function setGeminiKeyFlow() {
   if (k === null) return;
   store.set('st_gemini_key', k.trim());
   updateGeminiBtn();
+  updateSettingsSummary();
   setStatus(true, k.trim() ? 'Gemini key saved - the AI button on each lead is now live.' : 'Gemini key removed.', 100);
   setTimeout(() => setStatus(false), 2500);
 }
@@ -2743,6 +3002,8 @@ function openGemini(id) {
         'Years trading, news mentions, awards, hiring, other locations - pitch-relevant facts only, saveable to the lead\'s note.')
     + opt('pitch', 'AI-upgraded pitch',
         'Takes the rule-based Autopitch and sharpens it with live specifics about this business. Returns angle, key points and a written opener.')
+    + opt('socialaudit', 'Social media audit',
+        'Searches for their Facebook, Instagram, TikTok and LinkedIn - reports what exists, rough following, and whether it looks active or dormant. The ammo for pitching social media management.')
     + opt('demoprompt', 'Demo build prompt',
         'Writes a complete, paste-ready prompt for Cursor/Claude to build their demo site - sections, copy direction and branding cues researched from their real reviews and socials, plus SquareTwo build standards.')
     + '<div id="gemResult"></div>'
@@ -2800,11 +3061,30 @@ async function geminiRun(id, action) {
       const p = buildPitch(r);
       const strip = s => s.replace(/<[^>]+>/g, '');
       out = await geminiCall('You are writing sales prep for SquareTwo, a Dublin web agency selling websites to Irish SMBs on a monthly retainer with a demo-first approach (build the demo before the call). Improve the draft pitch below for this specific business. Search Google for anything recent or specific (their reviews, news, site) to sharpen it. Plain English, punchy, no em dashes, no markdown formatting. Output exactly three sections labelled ANGLE: (2 sentences), KEY POINTS: (4-6 lines each starting "- "), OPENER: (a 60-80 word first message addressed to the owner).\n\nBUSINESS:\n' + leadSnapshot(r) + '\n\nDRAFT PITCH:\nAngle: ' + strip(p.angle) + '\nPoints:\n' + p.points.map(x => '- ' + strip(x)).join('\n'));
+    } else if (action === 'socialaudit') {
+      const raw = await geminiCall('Search Google for the social media presence of the business "' + r.name + '" in ' + (r.searchLocation || 'Ireland') + ', Ireland. Check for Facebook, Instagram, TikTok and LinkedIn profiles. For each that exists, note the URL and any visible signals: rough follower count, and whether it appears active (recent posts mentioned in search results) or dormant. Respond with ONLY a JSON object: {"facebook": "url or empty", "instagram": "url or empty", "tiktok": "url or empty", "linkedin": "url or empty", "activity": "one or two sentences on how active their socials look, with evidence, or say unknown", "verdict": "one sentence: the social media management pitch angle for this business"}');
+      const j = extractJsonBlock(raw);
+      if (!j) { out = 'Could not parse the result:\n\n' + raw; }
+      else {
+        const appliedS = [];
+        for (const k of ['facebook', 'instagram', 'tiktok', 'linkedin']) {
+          if (j[k] && !r.socials[k]) { r.socials[k] = j[k]; appliedS.push(k); }
+        }
+        out = 'Facebook: ' + (j.facebook || 'none found')
+          + '\nInstagram: ' + (j.instagram || 'none found')
+          + '\nTikTok: ' + (j.tiktok || 'none found')
+          + '\nLinkedIn: ' + (j.linkedin || 'none found')
+          + '\n\nActivity: ' + (j.activity || 'unknown')
+          + '\n\nSMM angle: ' + (j.verdict || '-')
+          + (appliedS.length ? '\n\nAdded to the lead: ' + appliedS.join(', ') + '.' : '');
+        if (appliedS.length) { sbUpsertLeads([r]); saveLeadsLocal([r]); render(); }
+        el.dataset.intel = out;
+      }
     } else if (action === 'demoprompt') {
       out = await geminiCall('Write a complete build prompt that can be pasted into an AI coding assistant to generate a single-file HTML demo website for the business below. First search Google for their reviews and social media presence to inform the copy and branding cues. The prompt you write must specify: page sections (hero, services, reviews/social proof, about, contact), copy direction using real specifics you found (e.g. what customers praise in reviews), colour and branding cues, and these SquareTwo build standards verbatim: single-file HTML, mobile-first, WhatsApp chat widget, simple keyword chatbot, Formspree contact form, JSON-LD LocalBusiness schema, scroll animations, deploy-ready for Vercel. Output only the build prompt itself, no preamble. No em dashes anywhere.\n\nBUSINESS:\n' + leadSnapshot(r));
     }
 
-    const actions = (action === 'intel')
+    const actions = (action === 'intel' || action === 'socialaudit')
       ? '<div class="pitch-actions"><button class="btn btn-primary btn-sm" onclick="saveIntelToNote(\'' + escAttr(r.id) + '\')">Save to lead note</button><button class="btn btn-ghost btn-sm" onclick="copyText(document.getElementById(\'gemResult\').dataset.raw, \'Copied\')">Copy</button></div>'
       : '<div class="pitch-actions"><button class="btn btn-primary btn-sm" onclick="copyText(document.getElementById(\'gemResult\').dataset.raw, \'Copied\')">Copy result</button></div>';
 
@@ -3293,6 +3573,11 @@ function getFiltered() {
     if (currentFilter === 'warm' && r.temp !== 'warm') return false;
     if (currentFilter === 'cold' && r.temp !== 'cold') return false;
     if (currentFilter === 'badsite' && !(r.temp === 'cold' && (r.siteGrade === 'D' || r.siteGrade === 'F'))) return false;
+    if (currentFilter === 'nosocial') {
+      const noSocials = !Object.keys(r.socials || {}).length;
+      const known = r.temp === 'hot' || !!r.siteGrade; // hot = listing itself has none; graded cold = site was scanned
+      if (!(noSocials && known)) return false;
+    }
     if (r.reviewCount < minReviews) return false;
     if (phoneOnly && !r.phone) return false;
     if (hideDone && pipeline[r.id]?.status) return false;
@@ -3324,6 +3609,8 @@ function render() {
   const el = document.getElementById('results');
   const pipeline = getPipeline();
 
+  updateNextStep();
+  updateQuickstart();
   let countText = filtered.length + ' shown';
   if (viewMode === 'search' && lastSearchNewCount !== null && allResults.length && allResults[0].isNew !== undefined) {
     countText += ' · ' + lastSearchNewCount + ' new find' + (lastSearchNewCount === 1 ? '' : 's') + ' this search';
@@ -3410,12 +3697,19 @@ function render() {
     chips.push('<span class="meta-chip clickable" onclick="editOwner(\'' + escAttr(r.id) + '\')" title="Click to edit owner/contact name">' + (r.ownerName ? 'Owner: ' + esc(r.ownerName) : '+ owner') + '</span>');
     const metaRow = '<div class="meta-row">' + chips.join('') + '</div>';
 
+    const opps = computeOpportunities(r);
+    const oppRow = opps.length
+      ? '<div class="opp-row"><span class="opp-label">Pitch:</span>' + opps.map(o => '<span class="opp-chip ' + o.cls + '">' + o.key + '</span>').join('') + '</div>'
+      : '';
+    const angleText = primaryAngle(r);
+    const angleLine = angleText ? '<div class="angle-line">' + angleText + '</div>' : '';
+
     html += '<div class="' + rowClass + '">'
       + '<div class="row-check"><input type="checkbox" id="chk-' + escAttr(r.id) + '" onclick="toggleSelect(\'' + escAttr(r.id) + '\')" ' + (selectedIds.has(r.id) ? 'checked' : '') + '></div>'
-      + '<div><div class="biz-name">' + tag + '<span>' + esc(r.name) + '</span></div>' + links + emailLine + socialRow + metaRow + attribution + notePreview + '</div>'
+      + '<div><div class="biz-name">' + tag + '<span>' + esc(r.name) + '</span></div>' + links + emailLine + socialRow + metaRow + oppRow + angleLine + attribution + notePreview + '</div>'
       + '<div class="addr">' + esc(r.address) + '</div>'
       + '<div class="phone">' + phone + '</div>'
-      + '<div><span class="m-label">Score</span><span class="score-badge ' + (score >= 70 ? 's-high' : score >= 45 ? 's-mid' : 's-low') + '">' + score + '</span></div>'
+      + '<div title="' + escAttr(scoreBreakdown(r)) + '"><span class="m-label">Score</span><span class="score-badge ' + (score >= 70 ? 's-high' : score >= 45 ? 's-mid' : 's-low') + '">' + score + '</span></div>'
       + '<div class="rating"><span class="m-label">Rating</span>' + rating + '</div>'
       + '<div class="rating"><span class="m-label">Reviews</span>' + r.reviewCount + '</div>'
       + '<div>'
@@ -3690,13 +3984,15 @@ function escAttr(s) {
 /* ===== ICONS (inline SVG) ===== */
 const ICONS = {
   wa: '<svg viewBox="0 0 24 24" width="12" height="12" fill="currentColor" aria-hidden="true"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.297-.347.446-.52.149-.174.198-.298.297-.497.1-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z"/></svg>',
-  copy: '<svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 01-2-2V4a2 2 0 012-2h9a2 2 0 012 2v1"/></svg>',
-  brief: '<svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><path d="M14 2v6h6M16 13H8M16 17H8"/></svg>',
-  scan: '<svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>',
-  tpl: '<svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z"/></svg>',
-  download: '<svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4M7 10l5 5 5-5M12 15V3"/></svg>',
-  pitch: '<svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M13 2L3 14h7l-1 8 10-12h-7l1-8z"/></svg>',
-  sparkle: '<svg viewBox="0 0 24 24" width="13" height="13" fill="currentColor" aria-hidden="true"><path d="M12 2c.6 4.8 3.2 7.4 8 8-4.8.6-7.4 3.2-8 8-.6-4.8-3.2-7.4-8-8 4.8-.6 7.4-3.2 8-8z"/></svg>'
+  copy: '<svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="#14b8a6" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 01-2-2V4a2 2 0 012-2h9a2 2 0 012 2v1"/></svg>',
+  brief: '<svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="#f59e0b" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><path d="M14 2v6h6M16 13H8M16 17H8"/></svg>',
+  scan: '<svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="#3b82f6" stroke-width="2" stroke-linecap="round" aria-hidden="true"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>',
+  tpl: '<svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="#a78bfa" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z"/></svg>',
+  download: '<svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="#10b981" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4M7 10l5 5 5-5M12 15V3"/></svg>',
+  pitch: '<svg viewBox="0 0 24 24" width="12" height="12" fill="#facc15" stroke="#eab308" stroke-width="1" stroke-linejoin="round" aria-hidden="true"><path d="M13 2L3 14h7l-1 8 10-12h-7l1-8z"/></svg>',
+  sparkle: '<svg viewBox="0 0 24 24" width="13" height="13" fill="currentColor" aria-hidden="true"><path d="M12 2c.6 4.8 3.2 7.4 8 8-4.8.6-7.4 3.2-8 8-.6-4.8-3.2-7.4-8-8 4.8-.6 7.4-3.2 8-8z"/></svg>',
+  sun: '<svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="#f59e0b" stroke-width="2" stroke-linecap="round" aria-hidden="true"><circle cx="12" cy="12" r="4" fill="#fbbf24" stroke="#f59e0b"/><path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M6.34 17.66l-1.41 1.41M19.07 4.93l-1.41 1.41"/></svg>',
+  moon: '<svg viewBox="0 0 24 24" width="15" height="15" fill="#818cf8" stroke="#6366f1" stroke-width="1.5" stroke-linejoin="round" aria-hidden="true"><path d="M21 12.79A9 9 0 1111.21 3 7 7 0 0021 12.79z"/></svg>'
 };
 
 /* ===== AUTH GATE ===== */
@@ -3801,6 +4097,90 @@ function initAuth() {
   spawnEyesIn('eyesFieldLogin');
 }
 
+/* ===== SETTINGS COLLAPSE ===== */
+function toggleSettings() {
+  const w = document.getElementById('settingsWrap');
+  w.classList.toggle('open');
+  store.set('st_settings_open', w.classList.contains('open'));
+}
+
+function updateSettingsSummary() {
+  const mapsOk = keyInput.value.trim().startsWith('AIza');
+  const cloudOk = sbConfigured();
+  const gemOk = !!getGeminiKey();
+  const pill = (ok, label) => '<span class="key-pill ' + (ok ? 'ok' : '') + '">' + label + (ok ? ' \u2713' : ' \u2715') + '</span>';
+  document.getElementById('settingsSummary').innerHTML = pill(mapsOk, 'Maps key') + pill(cloudOk, 'Cloud') + pill(gemOk, 'Gemini');
+}
+
+function initSettings() {
+  const configured = keyInput.value.trim().startsWith('AIza') && sbConfigured();
+  const saved = store.get('st_settings_open', null);
+  const open = saved !== null ? saved : !configured;
+  document.getElementById('settingsWrap').classList.toggle('open', open);
+  updateSettingsSummary();
+  keyInput.addEventListener('input', updateSettingsSummary);
+  sbUrlInput.addEventListener('input', updateSettingsSummary);
+  sbKeyInput.addEventListener('input', updateSettingsSummary);
+}
+
+/* ===== QUICKSTART + NEXT STEP GUIDANCE ===== */
+function updateQuickstart() {
+  const hasData = allResults.length > 0 || document.getElementById('results').style.display === 'block';
+  const dismissed = store.get('st_qs_dismissed', false);
+  document.getElementById('quickStart').style.display = (!hasData && !dismissed) ? 'grid' : 'none';
+}
+function dismissQuickstart() {
+  store.set('st_qs_dismissed', true);
+  updateQuickstart();
+}
+
+function updateNextStep() {
+  const el = document.getElementById('nextStep');
+  if (!allResults.length || demoMode) { el.style.display = 'none'; return; }
+
+  const scannable = allResults.filter(r => r.website && r.temp !== 'warm' && !r.siteGrade).length;
+  const withEmail = allResults.filter(r => r.email).length;
+  const pipeline = getPipeline();
+  const untouched = allResults.filter(r => !pipeline[r.id]?.status).length;
+
+  let msg = '';
+  if (scannable > 3) {
+    msg = '<b>Next:</b> ' + scannable + ' leads have unscanned websites - hit <b>Scan websites</b> to pull their emails, socials and site grades before pitching.';
+  } else if (withEmail > 0 && untouched === allResults.length) {
+    msg = '<b>Ready to work:</b> ' + withEmail + ' leads have emails. Sort by score, use the angle lines, and start with WhatsApp or Autopitch - or Export CSV for Instantly.';
+  } else if (untouched === 0 && allResults.length) {
+    msg = '<b>List worked.</b> Every lead here has a status - search a new town or vertical, or check Full history for combos due a re-run.';
+  } else {
+    el.style.display = 'none';
+    return;
+  }
+  el.innerHTML = msg;
+  el.style.display = 'flex';
+}
+
+function statFilter(name) {
+  setFilterByName(name);
+  render();
+}
+
+/* ===== LIGHT MODE ===== */
+function toggleLightMode() {
+  const on = !document.body.classList.contains('light');
+  document.body.classList.toggle('light', on);
+  store.set('st_lightmode', on);
+  updateThemeToggle();
+}
+function updateThemeToggle() {
+  const btn = document.getElementById('themeToggle');
+  const isLight = document.body.classList.contains('light');
+  btn.innerHTML = isLight ? ICONS.moon : ICONS.sun;
+  btn.title = isLight ? 'Switch to dark mode' : 'Switch to light mode';
+}
+function initLightMode() {
+  if (store.get('st_lightmode', false)) document.body.classList.add('light');
+  updateThemeToggle();
+}
+
 /* ===== INIT ===== */
 renderUsage();
 renderHistory();
@@ -3813,6 +4193,9 @@ document.getElementById('geminiIcon').innerHTML = ICONS.sparkle;
 updateGeminiBtn();
 renderTabs();
 loadLists(true);
+initLightMode();
+initSettings();
+updateQuickstart();
 </script>
 </body>
 </html>

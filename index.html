@@ -85,6 +85,7 @@
       build_fee numeric default 0,
       retainer numeric default 0,
       status text default 'onboarding',
+      paying boolean default false,
       started_on date,
       next_action text default '',
       next_action_date date,
@@ -1590,6 +1591,24 @@
   .cc-next:hover { background: var(--surface-2); }
   .crm-filter-note { display: flex; align-items: center; gap: 10px; font-size: 13px; color: var(--text-dim); margin-bottom: 10px; }
 
+
+  .cc-retainer.not-paying { color: var(--text-dim); }
+  .cc-pay-toggle {
+    margin-top: 5px;
+    font-size: 10.5px; font-weight: 700; letter-spacing: 0.04em;
+    padding: 3.5px 10px; border-radius: 100px; cursor: pointer;
+    background: var(--surface-2); border: 1px solid var(--border); color: var(--text-dim);
+    font-family: 'Inter', sans-serif;
+    transition: all 0.15s;
+  }
+  .cc-pay-toggle:hover { border-color: var(--border-light); transform: translateY(-1px); }
+  .cc-pay-toggle.is-paying {
+    background: color-mix(in srgb, var(--hot) 14%, transparent);
+    border-color: color-mix(in srgb, var(--hot) 40%, transparent);
+    color: var(--hot);
+  }
+  .cf-paying { display: flex; align-items: center; gap: 8px; font-size: 13.5px; padding-top: 8px; cursor: pointer; }
+
 </style>
 </head>
 <body>
@@ -1615,6 +1634,7 @@
       <div class="field"><label>Build fee (€, one-off)</label><input type="number" id="cfBuildFee" placeholder="349" min="0"></div>
       <div class="field"><label>Monthly retainer (€)</label><input type="number" id="cfRetainer" placeholder="59" min="0"></div>
       <div class="field"><label>Status</label><select id="cfStatus"><option value="onboarding">Onboarding</option><option value="active">Active</option><option value="paused">Paused</option><option value="ended">Ended</option></select></div>
+      <div class="field"><label>Retainer billing</label><label class="cf-paying"><input type="checkbox" id="cfPaying"> Currently paying - count in MRR</label></div>
       <div class="field"><label>Start date</label><input type="date" id="cfStarted"></div>
       <div class="field cf-services"><label>Services</label>
         <div class="cf-checks">
@@ -2574,7 +2594,7 @@ async function persistClient(c) {
       });
       if (!res.ok && clientsCloudOk !== false) {
         clientsCloudOk = false;
-        showError('Client saved on this device, but the cloud "clients" table is missing - run this once in the Supabase SQL Editor so you and Jack share the client list:<br><br><code style="font-size:11px">create table clients (id text primary key, name text, brand text default \'\', contact_name text default \'\', phone text default \'\', email text default \'\', website text default \'\', services text default \'\', build_fee numeric default 0, retainer numeric default 0, status text default \'onboarding\', started_on date, next_action text default \'\', next_action_date date, notes text default \'\', created_at timestamptz default now());<br>alter table clients enable row level security;<br>create policy "allow anon clients" on clients for all using (true) with check (true);</code>');
+        showError('Client saved on this device, but the cloud "clients" table is missing - run this once in the Supabase SQL Editor so you and Jack share the client list:<br><br><code style="font-size:11px">create table clients (id text primary key, name text, brand text default \'\', contact_name text default \'\', phone text default \'\', email text default \'\', website text default \'\', services text default \'\', build_fee numeric default 0, retainer numeric default 0, status text default \'onboarding\', paying boolean default false, started_on date, next_action text default \'\', next_action_date date, notes text default \'\', created_at timestamptz default now());<br>alter table clients enable row level security;<br>create policy "allow anon clients" on clients for all using (true) with check (true);</code>');
       }
     } catch (e) {}
   }
@@ -2604,12 +2624,14 @@ function clientServices(c) {
 
 function renderCRM() {
   const active = clients.filter(c => c.status === 'active' || c.status === 'onboarding');
-  const mrr = active.reduce((s, c) => s + (parseFloat(c.retainer) || 0), 0);
+  const paying = clients.filter(c => c.paying && c.status !== 'ended');
+  const mrr = paying.reduce((s, c) => s + (parseFloat(c.retainer) || 0), 0);
   const today = new Date().toISOString().slice(0, 10);
   const due = clients.filter(c => c.next_action_date && c.next_action_date <= today && c.status !== 'ended').length;
 
   document.getElementById('crmActive').textContent = active.length;
   document.getElementById('crmMrr').textContent = '\u20ac' + mrr.toLocaleString('en-IE');
+  document.getElementById('crmMrr').title = paying.length + ' paying client' + (paying.length === 1 ? '' : 's');
   document.getElementById('crmBuild').textContent = '\u20ac' + clients.reduce((s, c) => s + (parseFloat(c.build_fee) || 0), 0).toLocaleString('en-IE');
   document.getElementById('crmDue').textContent = due;
 
@@ -2630,8 +2652,8 @@ function renderCRM() {
 
   const last = store.get('st_sheet_last', 0);
   document.getElementById('crmSyncHint').textContent = last
-    ? 'Last synced ' + new Date(last).toLocaleString('en-IE', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' }) + '. Mark a lead "Won" to add it here.'
-    : 'Hit Sync from sheet to pull your Client Tracker. Mark a lead "Won" to add one from a search.';
+    ? 'Last synced ' + new Date(last).toLocaleString('en-IE', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' }) + ' \u00b7 syncs only when you click.'
+    : 'Hit Sync from sheet to pull your Client Tracker \u00b7 syncs only when you click.';
 
   if (crmDueOnly && !sorted.length) {
     el.innerHTML = '<div class="crm-empty">Nothing needs attention - every follow-up is in the future. <br><button class="btn btn-ghost btn-sm" style="margin-top:10px;" onclick="toggleCrmDue()">Show all clients</button></div>';
@@ -2653,7 +2675,8 @@ function renderCRM() {
       + (c.contact_name || c.email ? '<div class="cc-contact">' + esc([c.contact_name, c.email].filter(Boolean).join(' \u00b7 ')) + '</div>' : '')
       + (svcs ? '<div class="cc-services">' + svcs + '</div>' : '')
       + '</div>'
-      + '<div class="cc-retainer">\u20ac' + (parseFloat(c.retainer) || 0).toLocaleString('en-IE') + '<span>/month</span>'
+      + '<div class="cc-retainer' + (c.paying ? '' : ' not-paying') + '">\u20ac' + (parseFloat(c.retainer) || 0).toLocaleString('en-IE') + '<span>/month</span>'
+      + '<div><button class="cc-pay-toggle ' + (c.paying ? 'is-paying' : '') + '" onclick="togglePaying(\'' + escAttr(c.id) + '\')" title="' + (c.paying ? 'Counted in MRR - click if they stop paying' : 'Not counted in MRR - click once the retainer starts being paid') + '">' + (c.paying ? '\u2713 Paying' : 'Mark paying') + '</button></div>'
       + (parseFloat(c.build_fee) ? '<div class="cc-build">\u20ac' + parseFloat(c.build_fee).toLocaleString('en-IE') + ' build fee</div>' : '')
       + '</div>'
       + '<div class="cc-next' + (overdue ? ' overdue' : '') + '" onclick="editNextAction(\'' + escAttr(c.id) + '\')" title="Click to set the next action and date" role="button">'
@@ -2675,6 +2698,16 @@ let crmDueOnly = false;
 function toggleCrmDue() {
   crmDueOnly = !crmDueOnly;
   renderCRM();
+}
+
+async function togglePaying(id) {
+  const c = clients.find(x => x.id === id);
+  if (!c) return;
+  c.paying = !c.paying;
+  await persistClient(c);
+  renderCRM();
+  setStatus(true, c.paying ? c.name + ' now counts in MRR.' : c.name + ' removed from MRR.', 100);
+  setTimeout(() => setStatus(false), 2200);
 }
 
 async function cycleStatus(id) {
@@ -2719,6 +2752,7 @@ function openClientForm(id, prefill) {
   document.getElementById('cfBuildFee').value = c ? (c.build_fee || '') : '';
   document.getElementById('cfRetainer').value = c ? (c.retainer || '') : '';
   document.getElementById('cfStatus').value = c ? (c.status || 'onboarding') : 'onboarding';
+  document.getElementById('cfPaying').checked = c ? !!c.paying : false;
   document.getElementById('cfStarted').value = c ? (c.started_on || '') : new Date().toISOString().slice(0, 10);
   const svcs = c ? clientServices(c) : (prefill?.services || []);
   document.getElementById('cfSvcWeb').checked = svcs.includes('website');
@@ -2759,6 +2793,7 @@ async function saveClientForm() {
     build_fee: parseFloat(document.getElementById('cfBuildFee').value) || 0,
     retainer: parseFloat(document.getElementById('cfRetainer').value) || 0,
     status: document.getElementById('cfStatus').value,
+    paying: document.getElementById('cfPaying').checked,
     started_on: document.getElementById('cfStarted').value || null,
     next_action: document.getElementById('cfNext').value.trim(),
     next_action_date: document.getElementById('cfNextDate').value || null,
@@ -2866,39 +2901,62 @@ function changeSheetUrl() {
   setTimeout(() => setStatus(false), 2500);
 }
 
-async function pullFromSheet() {
+const SYNCED_FIELDS = ['name', 'brand', 'contact_name', 'phone', 'email', 'website', 'services', 'build_fee', 'retainer', 'status', 'started_on', 'next_action', 'next_action_date', 'notes'];
+let sheetSyncing = false;
+
+function clientUnchanged(a, b) {
+  return SYNCED_FIELDS.every(k => String(a[k] ?? '') === String(b[k] ?? ''));
+}
+
+async function pullFromSheet(silent) {
+  if (sheetSyncing) return;
+  sheetSyncing = true;
   const url = store.get('st_sheet_url', DEFAULT_SHEET_URL);
   if (!normalizeSheetUrl(url)) {
-    showError('The saved sheet link is not a Google Sheets URL - click the gear to fix it.');
+    sheetSyncing = false;
+    if (!silent) showError('The saved sheet link is not a Google Sheets URL - click the gear to fix it.');
     return;
   }
 
-  setStatus(true, 'Pulling clients from the sheet...', 40);
+  if (!silent) setStatus(true, 'Pulling clients from the sheet...', 40);
   const text = await fetchSheetCsv(url);
   if (!text || text.trim().startsWith('<')) {
-    setStatus(false);
-    showError('Google would not hand the sheet over, which almost always means it is private. In the sheet click <b>Share</b> (top right) > under "General access" choose <b>Anyone with the link</b> > Viewer > Done, then pull again. The right tab also matters - open the tab you want before copying the link.');
+    sheetSyncing = false;
+    if (!silent) {
+      setStatus(false);
+      showError('Google would not hand the sheet over, which almost always means it is private. In the sheet click <b>Share</b> (top right) > under "General access" choose <b>Anyone with the link</b> > Viewer > Done, then pull again. The right tab also matters - open the tab you want before copying the link.');
+    } else {
+      const hint = document.getElementById('crmSyncHint');
+      if (hint) hint.textContent = 'Auto-sync could not reach the sheet - will retry shortly.';
+    }
     return;
   }
 
   const rows = parseCSV(text);
-  if (rows.length < 2) { setStatus(false); showError('The sheet has no data rows under the headers.'); return; }
+  if (rows.length < 2) { sheetSyncing = false; if (!silent) { setStatus(false); showError('The sheet has no data rows under the headers.'); } return; }
 
   const headers = rows[0].map(h => h.trim());
   const map = {};
   for (const f of CLIENT_SHEET_FIELDS) map[f.key] = guessSheetColumn(headers, f);
   if (map.name === -1) {
-    setStatus(false);
-    showError('No column for the business name was recognised. Name a header "Name", "Business" or "Client" and re-publish.');
+    sheetSyncing = false;
+    if (!silent) {
+      setStatus(false);
+      showError('No column for the business name was recognised. Name a header "Name", "Business" or "Client" and re-publish.');
+    }
     return;
   }
 
   const get = (row, key) => map[key] >= 0 ? String(row[map[key]] || '').trim() : '';
   let added = 0, updated = 0;
+  const seenSheetIds = new Set();
   for (const row of rows.slice(1)) {
     const name = get(row, 'name');
     if (!name) continue;
+    // skip totals/summary rows - they are arithmetic, not clients
+    if (/^(totals?|sum|subtotal|grand total|mrr|revenue|average|avg)\b/i.test(name)) continue;
     const id = 'cli-sh-' + importHash(name.toLowerCase());
+    seenSheetIds.add(id);
     const existing = clients.find(c => c.id === id);
 
     const statusRaw = get(row, 'status').toLowerCase();
@@ -2932,22 +2990,34 @@ async function pullFromSheet() {
       build_fee: buildRaw ? parseFloat(buildRaw) : (existing?.build_fee || 0),
       retainer: retainerRaw ? parseFloat(retainerRaw) : (existing?.retainer || 0),
       status: status,
+      paying: existing?.paying || false,
       started_on: parseSheetDate(get(row, 'started_on')) || existing?.started_on || null,
       next_action: followDate ? (existing?.next_action || 'Follow up') : (followRaw && followRaw.toLowerCase() !== 'no' ? followRaw : (existing?.next_action || '')),
       next_action_date: followDate || existing?.next_action_date || null,
       notes: sheetNotes || existing?.notes || ''
     };
+    if (existing && clientUnchanged(existing, c)) continue; // nothing actually changed - no write, no noise
     await persistClient(c);
     existing ? updated++ : added++;
   }
 
+  // the sheet is the master for its own rows: anything sheet-sourced that has
+  // vanished from the sheet gets removed here too (manual + Won clients untouched)
+  const gone = clients.filter(c => c.id.startsWith('cli-sh-') && !seenSheetIds.has(c.id));
+  for (const g of gone) await removeClient(g.id);
+
   store.set('st_sheet_last', Date.now());
+  sheetSyncing = false;
   renderCRM();
   renderTabs();
-  const unmapped = CLIENT_SHEET_FIELDS.filter(f => map[f.key] === -1 && !['name', 'email', 'website', 'status', 'services', 'notes'].includes(f.key)).map(f => f.key);
-  setStatus(true, 'Sheet synced: ' + added + ' new, ' + updated + ' updated.' + (unmapped.length ? ' Columns not found: ' + unmapped.join(', ') + '.' : ''), 100);
-  setTimeout(() => setStatus(false), 5000);
+  const changes = added + updated + gone.length;
+  if (silent && !changes) return; // quiet background sync, nothing new - say nothing
+  const unmapped = silent ? [] : CLIENT_SHEET_FIELDS.filter(f => map[f.key] === -1 && !['name', 'email', 'website', 'status', 'services', 'notes'].includes(f.key)).map(f => f.key);
+  setStatus(true, 'Sheet synced: ' + added + ' new, ' + updated + ' updated' + (gone.length ? ', ' + gone.length + ' removed (no longer in the sheet)' : '') + '.' + (unmapped.length ? ' Columns not found: ' + unmapped.join(', ') + '.' : ''), 100);
+  setTimeout(() => setStatus(false), 4000);
 }
+
+
 
 function markAsWon(leadId) {
   const r = findLead(leadId);

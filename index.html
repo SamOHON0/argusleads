@@ -1584,6 +1584,12 @@
   .cb-other { background: var(--surface-2); color: var(--text-dim); border: 1px solid var(--border); }
   .cc-build { font-size: 11.5px; font-weight: 500; color: var(--text-dim); margin-top: 2px; letter-spacing: 0; }
 
+
+  .cc-status { border: none; cursor: pointer; font-family: 'Inter', sans-serif; }
+  .cc-next { cursor: pointer; border-radius: var(--radius); padding: 4px 6px; margin: -4px -6px; transition: background 0.12s; }
+  .cc-next:hover { background: var(--surface-2); }
+  .crm-filter-note { display: flex; align-items: center; gap: 10px; font-size: 13px; color: var(--text-dim); margin-bottom: 10px; }
+
 </style>
 </head>
 <body>
@@ -1893,12 +1899,13 @@
       <div class="stat"><div class="label">Active clients</div><div class="value" id="crmActive">0</div></div>
       <div class="stat"><div class="label">Monthly recurring</div><div class="value hot" id="crmMrr">€0</div></div>
       <div class="stat"><div class="label">Build fees won</div><div class="value" id="crmBuild">€0</div></div>
-      <div class="stat"><div class="label">Needs attention</div><div class="value warm" id="crmDue">0</div></div>
+      <div class="stat" data-filter="due" onclick="toggleCrmDue()" title="Click: show only clients with a due or overdue follow-up"><div class="label">Needs attention</div><div class="value warm" id="crmDue">0</div></div>
     </div>
     <div class="crm-toolbar">
       <button class="btn btn-primary btn-sm" onclick="openClientForm()">+ Add client</button>
-      <button class="btn btn-ghost btn-sm" onclick="pullFromSheet()" title="Imports/updates clients from a published Google Sheet - File > Share > Publish to web > CSV, then paste the link here">Pull from Google Sheet</button>
-      <span class="crm-hint">Clients sync to the cloud like leads. Mark a lead "Won" to bring it in pre-filled.</span>
+      <button class="btn btn-ghost btn-sm" onclick="pullFromSheet()" title="Pulls the latest from your Client Tracker sheet - updates existing clients, adds new rows">Sync from sheet</button>
+      <button class="icon-btn" onclick="changeSheetUrl()" title="Change which Google Sheet to sync from" aria-label="Change sheet URL" style="width:32px;height:32px;font-size:13px;">&#9881;</button>
+      <span class="crm-hint" id="crmSyncHint">Mark a lead "Won" to bring it in pre-filled.</span>
     </div>
     <div id="crmList"></div>
   </div>
@@ -2613,9 +2620,25 @@ function renderCRM() {
   }
 
   const order = { onboarding: 0, active: 1, paused: 2, ended: 3 };
-  const sorted = [...clients].sort((a, b) => (order[a.status] ?? 9) - (order[b.status] ?? 9) || (b.retainer || 0) - (a.retainer || 0));
+  let pool = [...clients];
+  if (crmDueOnly) pool = pool.filter(c => c.next_action_date && c.next_action_date <= today && c.status !== 'ended');
+  const sorted = pool.sort((a, b) => {
+    const aDue = a.next_action_date && a.next_action_date <= today && a.status !== 'ended' ? 0 : 1;
+    const bDue = b.next_action_date && b.next_action_date <= today && b.status !== 'ended' ? 0 : 1;
+    return aDue - bDue || (order[a.status] ?? 9) - (order[b.status] ?? 9) || (b.retainer || 0) - (a.retainer || 0);
+  });
 
-  let h = '';
+  const last = store.get('st_sheet_last', 0);
+  document.getElementById('crmSyncHint').textContent = last
+    ? 'Last synced ' + new Date(last).toLocaleString('en-IE', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' }) + '. Mark a lead "Won" to add it here.'
+    : 'Hit Sync from sheet to pull your Client Tracker. Mark a lead "Won" to add one from a search.';
+
+  if (crmDueOnly && !sorted.length) {
+    el.innerHTML = '<div class="crm-empty">Nothing needs attention - every follow-up is in the future. <br><button class="btn btn-ghost btn-sm" style="margin-top:10px;" onclick="toggleCrmDue()">Show all clients</button></div>';
+    return;
+  }
+
+  let h = crmDueOnly ? '<div class="crm-filter-note">Showing clients needing attention <button class="btn btn-ghost btn-sm" onclick="toggleCrmDue()">Show all</button></div>' : '';
   for (const c of sorted) {
     const svcs = clientServices(c).map(s => '<span class="cc-svc">' + esc(s) + '</span>').join('');
     const overdue = c.next_action_date && c.next_action_date <= today && c.status !== 'ended';
@@ -2624,22 +2647,63 @@ function renderCRM() {
     if (c.next_action_date) nextBits.push(new Date(c.next_action_date + 'T00:00').toLocaleDateString('en-IE', { day: 'numeric', month: 'short' }));
     const wa = c.phone ? waHref({ phone: c.phone, name: c.name }) : '';
     h += '<div class="client-card">'
-      + '<div><div class="cc-name">' + esc(c.name) + ' <span class="cc-status cs-' + esc(c.status) + '">' + esc(c.status) + '</span>' + brandChip(c.brand) + '</div>'
+      + '<div><div class="cc-name">' + esc(c.name)
+      + ' <button class="cc-status cs-' + esc(c.status) + '" onclick="cycleStatus(\'' + escAttr(c.id) + '\')" title="Click to change status: onboarding > active > paused > ended">' + esc(c.status) + '</button>'
+      + brandChip(c.brand) + '</div>'
       + (c.contact_name || c.email ? '<div class="cc-contact">' + esc([c.contact_name, c.email].filter(Boolean).join(' \u00b7 ')) + '</div>' : '')
       + (svcs ? '<div class="cc-services">' + svcs + '</div>' : '')
       + '</div>'
       + '<div class="cc-retainer">\u20ac' + (parseFloat(c.retainer) || 0).toLocaleString('en-IE') + '<span>/month</span>'
       + (parseFloat(c.build_fee) ? '<div class="cc-build">\u20ac' + parseFloat(c.build_fee).toLocaleString('en-IE') + ' build fee</div>' : '')
       + '</div>'
-      + '<div class="cc-next' + (overdue ? ' overdue' : '') + '">' + (nextBits.length ? (overdue ? '\u26a0 ' : '') + nextBits.join(' \u00b7 ') : '<span style="opacity:.5">No next action set</span>') + '</div>'
+      + '<div class="cc-next' + (overdue ? ' overdue' : '') + '" onclick="editNextAction(\'' + escAttr(c.id) + '\')" title="Click to set the next action and date" role="button">'
+      + (nextBits.length ? (overdue ? '\u26a0 ' : '') + nextBits.join(' \u00b7 ') : '<span style="opacity:.55">+ Set next action</span>')
+      + '</div>'
       + '<div class="cc-actions">'
+      + (nextBits.length && c.status !== 'ended' ? '<button class="act-btn" style="color:var(--hot);" onclick="completeAction(\'' + escAttr(c.id) + '\')" title="Mark this follow-up done - logs it to notes and clears it">Done \u2713</button>' : '')
       + (wa ? '<a class="act-btn wa-btn" href="' + wa + '" target="_blank" rel="noopener">' + ICONS.wa + 'WhatsApp</a>' : '')
+      + (c.email ? '<a class="act-btn" href="mailto:' + escAttr(c.email) + '">Email</a>' : '')
       + (c.website ? '<a class="act-btn" href="' + escAttr(c.website) + '" target="_blank" rel="noopener">Site</a>' : '')
       + '<button class="act-btn" onclick="openClientForm(\'' + escAttr(c.id) + '\')">Edit</button>'
       + '</div>'
       + '</div>';
   }
   el.innerHTML = h;
+}
+
+let crmDueOnly = false;
+function toggleCrmDue() {
+  crmDueOnly = !crmDueOnly;
+  renderCRM();
+}
+
+async function cycleStatus(id) {
+  const c = clients.find(x => x.id === id);
+  if (!c) return;
+  const cycle = ['onboarding', 'active', 'paused', 'ended'];
+  c.status = cycle[(cycle.indexOf(c.status) + 1) % cycle.length];
+  await persistClient(c);
+  renderCRM();
+}
+
+function editNextAction(id) {
+  const c = clients.find(x => x.id === id);
+  if (!c) return;
+  openClientForm(id);
+  setTimeout(() => document.getElementById('cfNext').focus(), 80);
+}
+
+async function completeAction(id) {
+  const c = clients.find(x => x.id === id);
+  if (!c) return;
+  const done = [c.next_action, c.next_action_date ? '(' + c.next_action_date + ')' : ''].filter(Boolean).join(' ');
+  c.notes = ((c.notes ? c.notes + ' | ' : '') + 'Done ' + new Date().toLocaleDateString('en-IE', { day: 'numeric', month: 'short' }) + ': ' + (done || 'follow-up')).slice(0, 900);
+  c.next_action = '';
+  c.next_action_date = null;
+  await persistClient(c);
+  renderCRM();
+  setStatus(true, 'Follow-up logged for ' + c.name + '. Set the next one when you know it.', 100);
+  setTimeout(() => setStatus(false), 3000);
 }
 
 function openClientForm(id, prefill) {
@@ -2760,31 +2824,57 @@ function guessSheetColumn(headers, field) {
   return -1;
 }
 
-function normalizeSheetUrl(url) {
-  // already a published CSV link - use as-is
-  if (/output=csv/.test(url)) return url;
-  // any normal sheet link (editor, share, mobile): extract the id + tab and build the CSV export url
+function sheetUrlParts(url) {
   const idM = url.match(/spreadsheets\/d\/(?:e\/)?([\w-]+)/);
   if (!idM) return null;
   const gidM = url.match(/[#?&]gid=(\d+)/);
-  return 'https://docs.google.com/spreadsheets/d/' + idM[1] + '/export?format=csv&gid=' + (gidM ? gidM[1] : '0');
+  return { id: idM[1], gid: gidM ? gidM[1] : '0' };
+}
+
+function normalizeSheetUrl(url) {
+  if (/output=csv/.test(url)) return url; // already a published CSV link
+  const p = sheetUrlParts(url);
+  return p ? 'https://docs.google.com/spreadsheets/d/' + p.id + '/export?format=csv&gid=' + p.gid : null;
+}
+
+// Public sheets answer this endpoint WITH CORS headers, so the browser can read
+// it directly on your own connection - no proxy, no datacenter IP for Google to distrust.
+async function fetchSheetCsv(url) {
+  const p = sheetUrlParts(url);
+  if (p) {
+    try {
+      const gviz = 'https://docs.google.com/spreadsheets/d/' + p.id + '/gviz/tq?tqx=out:csv&gid=' + p.gid;
+      const res = await fetch(gviz);
+      if (res.ok) {
+        const text = await res.text();
+        if (text && !text.trim().startsWith('<')) return text;
+      }
+    } catch (e) { /* CORS or network refusal - fall through to the proxy route */ }
+  }
+  const csvUrl = normalizeSheetUrl(url);
+  return csvUrl ? await fetchViaProxy(csvUrl) : '';
+}
+
+const DEFAULT_SHEET_URL = 'https://docs.google.com/spreadsheets/d/12hBkhzYiC6cnX2pU9IHYo9wQ-blUej1W1W8lVlbvUGA/edit?gid=1337879877#gid=1337879877';
+
+function changeSheetUrl() {
+  const saved = store.get('st_sheet_url', DEFAULT_SHEET_URL);
+  const url = prompt('Google Sheet to sync clients from (the normal address-bar link works). The sheet needs Share set to "Anyone with the link: Viewer".', saved);
+  if (url === null) return;
+  store.set('st_sheet_url', url.trim() || DEFAULT_SHEET_URL);
+  setStatus(true, 'Sheet updated - hit Sync from sheet to pull it.', 100);
+  setTimeout(() => setStatus(false), 2500);
 }
 
 async function pullFromSheet() {
-  const saved = store.get('st_sheet_url', '');
-  const url = prompt('Paste your Google Sheet link - the normal one from the address bar works.\n\nThe sheet just needs Share set to "Anyone with the link: Viewer", and the first row must be headers (Name, Phone, Retainer, etc).', saved);
-  if (url === null) return;
-  if (!url.trim()) { store.set('st_sheet_url', ''); return; }
-
-  const csvUrl = normalizeSheetUrl(url.trim());
-  if (!csvUrl) {
-    showError('That does not look like a Google Sheets link. Copy the URL straight from the address bar while the sheet is open.');
+  const url = store.get('st_sheet_url', DEFAULT_SHEET_URL);
+  if (!normalizeSheetUrl(url)) {
+    showError('The saved sheet link is not a Google Sheets URL - click the gear to fix it.');
     return;
   }
-  store.set('st_sheet_url', url.trim());
 
   setStatus(true, 'Pulling clients from the sheet...', 40);
-  const text = await fetchViaProxy(csvUrl);
+  const text = await fetchSheetCsv(url);
   if (!text || text.trim().startsWith('<')) {
     setStatus(false);
     showError('Google would not hand the sheet over, which almost always means it is private. In the sheet click <b>Share</b> (top right) > under "General access" choose <b>Anyone with the link</b> > Viewer > Done, then pull again. The right tab also matters - open the tab you want before copying the link.');
@@ -2851,10 +2941,11 @@ async function pullFromSheet() {
     existing ? updated++ : added++;
   }
 
+  store.set('st_sheet_last', Date.now());
   renderCRM();
   renderTabs();
-  const unmapped = CLIENT_SHEET_FIELDS.filter(f => map[f.key] === -1 && f.key !== 'name').map(f => f.key);
-  setStatus(true, 'Sheet pulled: ' + added + ' new, ' + updated + ' updated.' + (unmapped.length ? ' Columns not found in the sheet: ' + unmapped.join(', ') + '.' : ''), 100);
+  const unmapped = CLIENT_SHEET_FIELDS.filter(f => map[f.key] === -1 && !['name', 'email', 'website', 'status', 'services', 'notes'].includes(f.key)).map(f => f.key);
+  setStatus(true, 'Sheet synced: ' + added + ' new, ' + updated + ' updated.' + (unmapped.length ? ' Columns not found: ' + unmapped.join(', ') + '.' : ''), 100);
   setTimeout(() => setStatus(false), 5000);
 }
 

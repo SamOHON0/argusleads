@@ -1609,6 +1609,36 @@
   }
   .cf-paying { display: flex; align-items: center; gap: 8px; font-size: 13.5px; padding-top: 8px; cursor: pointer; }
 
+
+  /* one-click save star */
+  .star-btn {
+    background: transparent; border: none; cursor: pointer; padding: 2px;
+    color: var(--border-light); display: inline-flex; align-items: center;
+    transition: color 0.15s, transform 0.15s;
+    flex-shrink: 0;
+  }
+  .star-btn:hover { color: #f59e0b; transform: scale(1.15); }
+  .star-btn.saved { color: #f59e0b; }
+  .star-btn.saved:hover { color: var(--text-dim); }
+
+
+  /* status label set */
+  .st-btn { padding: 4px 9px; font-size: 11.5px; }
+  .act-btn.on-noanswer { background: color-mix(in srgb, var(--warm) 13%, transparent); color: var(--warm); border-color: color-mix(in srgb, var(--warm) 38%, transparent); }
+  .act-btn.on-callback { background: color-mix(in srgb, var(--cold) 12%, transparent); color: var(--cold); border-color: color-mix(in srgb, var(--cold) 36%, transparent); }
+  .act-btn.on-meeting { background: color-mix(in srgb, var(--hot) 18%, transparent); color: var(--hot); border-color: var(--hot); font-weight: 700; }
+  .act-btn.on-saidno { background: color-mix(in srgb, var(--danger) 12%, transparent); color: var(--danger); border-color: color-mix(in srgb, var(--danger) 36%, transparent); }
+
+  /* industry tag beside the business name */
+  .industry-tag {
+    font-size: 10.5px; font-weight: 600; letter-spacing: 0.03em;
+    color: var(--text-dim);
+    background: var(--surface-2);
+    border: 1px solid var(--border);
+    padding: 2px 8px; border-radius: 100px;
+    text-transform: capitalize;
+  }
+
 </style>
 </head>
 <body>
@@ -1848,7 +1878,7 @@
         <label><input type="checkbox" id="phoneOnly" onchange="render()"> Has phone</label>
       </div>
       <div class="mini-filter">
-        <label><input type="checkbox" id="hideDone" onchange="render()" checked> Hide contacted/skipped</label>
+        <label title="Hides leads labelled contacted, skipped or said-no. No-answer, call-back and meeting leads stay visible - they still need working."><input type="checkbox" id="hideDone" onchange="render()" checked> Hide finished leads</label>
       </div>
       <div class="mini-filter">
         <label title="Only show leads this search found for the first time - hides everything already in your database"><input type="checkbox" id="newOnly" onchange="render()"> New finds only</label>
@@ -3037,6 +3067,36 @@ function markAsWon(leadId) {
   });
 }
 
+/* ===== SAVED LIST (one-click star) ===== */
+const SAVED_LIST_NAME = 'Saved';
+
+async function getOrCreateSavedList() {
+  let list = lists.find(l => l.name.toLowerCase() === SAVED_LIST_NAME.toLowerCase());
+  if (list) return list;
+  list = { id: genId(), name: SAVED_LIST_NAME, leadIds: [] };
+  const ok = await persistList(list);
+  if (!ok) return null;
+  lists.push(list);
+  return list;
+}
+
+async function toggleSaved(id) {
+  if (demoMode) { showError('Saving is disabled in example mode. Run a real search first.'); return; }
+  const list = await getOrCreateSavedList();
+  if (!list) return;
+  const has = list.leadIds.includes(id);
+  list.leadIds = has ? list.leadIds.filter(x => x !== id) : [...list.leadIds, id];
+  await persistList(list);
+  pulseListId = has ? null : list.id;
+  renderTabs();
+  if (!has) {
+    setStatus(true, 'Saved - it lives in the "' + list.name + '" list.', 100);
+    setTimeout(() => setStatus(false), 1800);
+  }
+  if (viewMode === list.id && has) allResults = allResults.filter(r => r.id !== id);
+  render();
+}
+
 /* ===== DRAG AND DROP (rows -> list tabs) ===== */
 let dragIds = [];
 
@@ -3168,6 +3228,16 @@ document.addEventListener('click', closeSelMenu);
 /* ===== PIPELINE (status + notes per lead, synced to cloud) ===== */
 let demoPipeline = {};
 function getPipeline() { return demoMode ? demoPipeline : store.get('st_pipeline', {}); }
+
+const STATUS_META = {
+  contacted: { label: 'Contacted', on: 'on-contacted', chip: 'good', chipText: 'Contacted' },
+  noanswer: { label: 'No answer', on: 'on-noanswer', chip: 'warn', chipText: 'No answer' },
+  callback: { label: 'Call back', on: 'on-callback', chip: 'info', chipText: 'Call back' },
+  meeting: { label: 'Meeting', on: 'on-meeting', chip: 'good', chipText: 'Meeting booked' },
+  saidno: { label: 'Said no', on: 'on-saidno', chip: 'bad', chipText: 'Said no' },
+  skipped: { label: 'Skip', on: 'on-skipped', chip: '', chipText: 'Skipped' }
+};
+const CLOSED_STATUSES = ['contacted', 'skipped', 'saidno'];
 
 function setLeadStatus(id, status) {
   const p = getPipeline();
@@ -4431,7 +4501,7 @@ function getFiltered() {
     }
     if (r.reviewCount < minReviews) return false;
     if (phoneOnly && !r.phone) return false;
-    if (hideDone && pipeline[r.id]?.status) return false;
+    if (hideDone && CLOSED_STATUSES.includes(pipeline[r.id]?.status)) return false;
     if (document.getElementById('newOnly').checked && r.isNew === false) return false;
     return true;
   });
@@ -4475,6 +4545,8 @@ function render() {
     return;
   }
 
+  const savedListRef = lists.find(l => l.name.toLowerCase() === 'saved');
+  const savedSet = new Set(savedListRef ? savedListRef.leadIds : []);
   const dupCounts = {};
   for (const r of allResults) {
     const k = normalizeIrishPhone(r.phone);
@@ -4546,6 +4618,10 @@ function render() {
     }
     if (r.isNew === true) chips.unshift('<span class="meta-chip good" title="First time this lead has appeared in your database">NEW</span>');
     else if (r.isNew === false) chips.unshift('<span class="meta-chip" title="Already in your database from a previous search or import">Seen before</span>');
+    if (p.status && STATUS_META[p.status]) {
+      const sm = STATUS_META[p.status];
+      chips.unshift('<span class="meta-chip ' + sm.chip + '">' + sm.chipText + (p.by ? ' by ' + esc(p.by) : '') + '</span>');
+    }
     const dupKey = normalizeIrishPhone(r.phone);
     if (dupKey && dupCounts[dupKey] > 1) chips.push('<span class="meta-chip warn" title="Same phone number on multiple listings - likely one owner, bigger deal">&times;' + dupCounts[dupKey] + ' listings</span>');
     chips.push('<span class="meta-chip clickable" onclick="editOwner(\'' + escAttr(r.id) + '\')" title="Click to edit owner/contact name">' + (r.ownerName ? 'Owner: ' + esc(r.ownerName) : '+ owner') + '</span>');
@@ -4560,7 +4636,11 @@ function render() {
 
     html += '<div class="' + rowClass + '"' + dragAttrs + '>'
       + '<div class="row-check"><input type="checkbox" id="chk-' + escAttr(r.id) + '" onclick="toggleSelect(event, \'' + escAttr(r.id) + '\')" ' + (selectedIds.has(r.id) ? 'checked' : '') + ' title="Tick to select - shift-click selects a range" aria-label="Select ' + escAttr(r.name) + '"></div>'
-      + '<div><div class="biz-name">' + tag + '<span>' + esc(r.name) + '</span></div>' + links + emailLine + socialRow + metaRow + oppRow + angleLine + attribution + notePreview + '</div>'
+      + '<div><div class="biz-name">'
+      + '<button class="star-btn' + (savedSet.has(r.id) ? ' saved' : '') + '" onclick="toggleSaved(\'' + escAttr(r.id) + '\')" title="' + (savedSet.has(r.id) ? 'Saved - click to remove from the Saved list' : 'Save this lead to your Saved list with one click') + '" aria-label="Save lead">' + ICONS.star + '</button>'
+      + tag + '<span>' + esc(r.name) + '</span>'
+      + (r.query && !/^CSV import/i.test(r.query) ? '<span class="industry-tag">' + esc(r.query.toLowerCase()) + '</span>' : '')
+      + '</div>' + links + emailLine + socialRow + metaRow + oppRow + angleLine + attribution + notePreview + '</div>'
       + '<div class="addr">' + esc(r.address) + '</div>'
       + '<div class="phone">' + phone + '</div>'
       + '<div title="' + escAttr(scoreBreakdown(r)) + '"><span class="m-label">Score</span><span class="score-badge ' + (score >= 70 ? 's-high' : score >= 45 ? 's-mid' : 's-low') + '">' + score + '</span></div>'
@@ -4568,8 +4648,9 @@ function render() {
       + '<div class="rating"><span class="m-label">Reviews</span>' + r.reviewCount + '</div>'
       + '<div>'
         + '<div class="lead-actions">'
-        + '<button class="act-btn ' + (p.status === 'contacted' ? 'on-contacted' : '') + '" onclick="setLeadStatus(\'' + escAttr(r.id) + '\', \'contacted\')">Contacted</button>'
-        + '<button class="act-btn ' + (p.status === 'skipped' ? 'on-skipped' : '') + '" onclick="setLeadStatus(\'' + escAttr(r.id) + '\', \'skipped\')">Skip</button>'
+        + Object.entries(STATUS_META).map(([key, m]) =>
+          '<button class="act-btn st-btn ' + (p.status === key ? m.on : '') + '" onclick="setLeadStatus(\'' + escAttr(r.id) + '\', \'' + key + '\')" title="' + (p.status === key ? 'Click again to clear this label' : 'Label as ' + m.label.toLowerCase()) + '">' + m.label + (p.status === key ? ' \u2713' : '') + '</button>'
+        ).join('')
         + '<button class="act-btn" onclick="toggleNote(\'' + escAttr(r.id) + '\')">Note</button>'
         + '<button class="act-btn" onclick="markAsWon(\'' + escAttr(r.id) + '\')" title="Deal closed - adds this lead to the Clients tab pre-filled" style="color:var(--hot);">Won</button>'
         + '</div>'
@@ -4846,6 +4927,7 @@ const ICONS = {
   download: '<svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="#10b981" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4M7 10l5 5 5-5M12 15V3"/></svg>',
   pitch: '<svg viewBox="0 0 24 24" width="12" height="12" fill="#facc15" stroke="#eab308" stroke-width="1" stroke-linejoin="round" aria-hidden="true"><path d="M13 2L3 14h7l-1 8 10-12h-7l1-8z"/></svg>',
   sparkle: '<svg viewBox="0 0 24 24" width="13" height="13" fill="currentColor" aria-hidden="true"><path d="M12 2c.6 4.8 3.2 7.4 8 8-4.8.6-7.4 3.2-8 8-.6-4.8-3.2-7.4-8-8 4.8-.6 7.4-3.2 8-8z"/></svg>',
+  star: '<svg viewBox="0 0 24 24" width="15" height="15" fill="currentColor" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round" aria-hidden="true"><path d="M12 2l2.9 6.26 6.6.7-4.95 4.5 1.4 6.54L12 16.77 6.05 20l1.4-6.54L2.5 8.96l6.6-.7z"/></svg>',
   sun: '<svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="#f59e0b" stroke-width="2" stroke-linecap="round" aria-hidden="true"><circle cx="12" cy="12" r="4" fill="#fbbf24" stroke="#f59e0b"/><path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M6.34 17.66l-1.41 1.41M19.07 4.93l-1.41 1.41"/></svg>',
   moon: '<svg viewBox="0 0 24 24" width="15" height="15" fill="#818cf8" stroke="#6366f1" stroke-width="1.5" stroke-linejoin="round" aria-hidden="true"><path d="M21 12.79A9 9 0 1111.21 3 7 7 0 0021 12.79z"/></svg>'
 };

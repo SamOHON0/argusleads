@@ -2271,14 +2271,25 @@
   .plist { min-width: 1020px; }
   .pl-row {
     display: grid;
-    grid-template-columns: 2.4fr 122px 104px 132px 1.7fr 92px 2.2fr 40px;
+    grid-template-columns: 26px 2.3fr 168px 100px 128px 1.6fr 90px 2fr 36px;
     gap: 10px; align-items: center;
-    padding: 8px 16px;
+    padding: 8px 14px;
     border-bottom: 1px solid var(--border-faint);
     font-size: 13px;
     cursor: pointer;
     transition: background 0.1s;
   }
+  .pl-check { display: inline-flex; align-items: center; }
+  .pl-check input[type="checkbox"] { cursor: pointer; }
+  .pl-row.is-selected { background: color-mix(in srgb, var(--accent) 7%, transparent); box-shadow: inset 2px 0 0 var(--accent); }
+  .pl-stage { display: inline-flex; align-items: center; gap: 6px; white-space: nowrap; }
+  .mk-deal {
+    font-size: 10px; font-weight: 700; letter-spacing: 0.03em;
+    background: transparent; border: 1px solid var(--border-gold); color: var(--text-gold);
+    border-radius: 100px; padding: 2.5px 8px; cursor: pointer;
+    font-family: var(--font-sans); transition: all 0.13s; white-space: nowrap;
+  }
+  .mk-deal:hover { background: color-mix(in srgb, var(--gold-500) 14%, transparent); transform: translateY(-1px); }
   .pl-row:last-child { border-bottom: none; }
   .pl-row:not(.pl-head):hover { background: color-mix(in srgb, var(--accent) 5%, transparent); box-shadow: inset 2px 0 0 var(--accent); }
   .pl-head {
@@ -2678,7 +2689,7 @@
   <!-- ===== PIPELINE BOARD ===== -->
   <div id="pipelineSection" style="display:none;">
     <div class="pipe-topbar">
-      <span class="pipe-views" id="pipeViews"></span>
+      <span id="pipeViews" style="display:inline-flex;gap:8px;flex-wrap:wrap;"></span>
       <span class="pipe-hint">Saved leads plus everything you've worked. Click any row or card to open it &middot; on the board, drag cards between stages and drop on <b>Won</b> to close the deal.</span>
       <span class="pipe-counts" id="pipeCounts"></span>
     </div>
@@ -3900,8 +3911,8 @@ async function toggleSaved(id) {
   pulseListId = has ? null : list.id;
   renderTabs();
   if (!has) {
-    setStatus(true, 'Saved - it lives in the "' + list.name + '" list.', 100);
-    setTimeout(() => setStatus(false), 1800);
+    setStatus(true, 'Added to the Pipeline - it is in the To contact column (and the "' + list.name + '" list).', 100);
+    setTimeout(() => setStatus(false), 2200);
   }
   if (viewMode === list.id && has) allResults = allResults.filter(r => r.id !== id);
   render();
@@ -3911,6 +3922,8 @@ async function toggleSaved(id) {
 let dragIds = [];
 
 function rowDragStart(e, id) {
+  // never hijack clicks on the checkbox cell - it kills checkbox ticking in Chrome
+  if (e.target && e.target.closest && e.target.closest('.row-check')) { e.preventDefault(); return; }
   // dragging a selected row carries the whole selection; otherwise just that row
   dragIds = selectedIds.has(id) ? [...selectedIds] : [id];
   e.dataTransfer.effectAllowed = 'copy';
@@ -4007,6 +4020,10 @@ function renderSelectionBar() {
   const bar = document.getElementById('selectionBar');
   if (!selectedIds.size) { bar.classList.remove('open'); bar.innerHTML = ''; return; }
   let h = '<span class="sel-count">' + selectedIds.size + ' selected</span>';
+  h += '<button class="btn btn-ghost btn-sm" onclick="addSelectedToPipeline()" title="Adds the selected leads to the Pipeline (To contact column)">+ Pipeline</button>';
+  h += '<span class="sel-menu-wrap"><button class="btn btn-ghost btn-sm" onclick="toggleMenu(event, \'stageMenu\')" title="Move the selected leads to a deal stage on the Pipeline">Set stage ▾</button><div class="sel-menu" id="stageMenu">'
+    + PIPE_STAGES.map(s => '<button onclick="bulkSetStage(\'' + s.key + '\')">' + s.label + '</button>').join('')
+    + '</div></span>';
   h += '<span class="sel-menu-wrap"><button class="btn btn-ghost btn-sm" onclick="toggleMenu(event, \'addListMenu\')">Add to list ▾</button><div class="sel-menu" id="addListMenu">'
     + lists.map(l => '<button onclick="addSelectedToList(\'' + escAttr(l.id) + '\')">' + esc(l.name) + ' (' + l.leadIds.length + ')</button>').join('')
     + '<button onclick="createList(true)" style="border-top: 1px solid var(--border);">+ New list with selection</button>'
@@ -4108,6 +4125,53 @@ function setLeadStage(id, stage) {
   p[id].stage = stage;
   if (!demoMode) store.set('st_pipeline', p);
   syncStageCloud(id, stage);
+}
+
+/* bulk: selected leads -> pipeline (Saved list, To contact column) */
+async function addSelectedToPipeline() {
+  if (!selectedIds.size) return;
+  if (demoMode) { showError('Pipeline features are disabled in example mode.'); return; }
+  const list = await getOrCreateSavedList();
+  if (!list) return;
+  const ok = await addIdsToList(list.id, [...selectedIds]);
+  if (ok) {
+    setStatus(true, 'Added to the Pipeline - they are in the To contact column.', 100);
+    setTimeout(() => setStatus(false), 2500);
+    clearSelection();
+    render();
+  }
+}
+
+/* bulk: selected leads -> a deal stage */
+async function bulkSetStage(stageKey) {
+  closeSelMenu();
+  if (!selectedIds.size) return;
+  if (demoMode) { showError('Pipeline features are disabled in example mode.'); return; }
+  const ids = [...selectedIds];
+  const p = getPipeline();
+  for (const id of ids) {
+    if (!p[id]) p[id] = {};
+    p[id].stage = stageKey;
+    if (stageKey === 'lost') { p[id].status = 'saidno'; p[id].by = currentProfile; }
+    if (stageKey === 'won') { p[id].status = 'won'; p[id].by = currentProfile; }
+  }
+  store.set('st_pipeline', p);
+  if (sbConfigured()) {
+    for (let i = 0; i < ids.length; i += 50) {
+      const batch = ids.slice(i, i + 50);
+      const filter = 'id=in.(' + batch.map(id => '"' + id.replace(/"/g, '') + '"').join(',') + ')';
+      const body = { stage: stageKey };
+      if (stageKey === 'lost') { body.status = 'saidno'; body.status_by = currentProfile; }
+      if (stageKey === 'won') { body.status = 'won'; body.status_by = currentProfile; }
+      fetch(sbEndpoint() + '?' + filter, {
+        method: 'PATCH', headers: { ...sbHeaders(), 'Prefer': 'return=minimal' }, body: JSON.stringify(body)
+      }).catch(() => {});
+    }
+  }
+  setStatus(true, ids.length + ' lead' + (ids.length === 1 ? '' : 's') + ' moved to ' + stageMeta(stageKey).label + ' - see the Pipeline tab.', 100);
+  setTimeout(() => setStatus(false), 2800);
+  clearSelection();
+  render();
 }
 
 /* follow-up dates (local-first; synced to a follow_up_at column when it exists) */
@@ -5546,12 +5610,18 @@ function lastNoteLine(note) {
 }
 
 let pipeView = store.get('st_pipe_view', 'list'); // 'list' | 'board'
+let pipeFilter = 'all'; // 'all' | 'leads' (To contact) | 'deals' (in a stage)
 let pipeSortBy = 'due';   // 'name' | 'stage' | 'due'
 let pipeSortDir = 1;
 
 function setPipeView(v) {
   pipeView = v;
   store.set('st_pipe_view', v);
+  renderPipeline();
+}
+
+function setPipeFilter(f) {
+  pipeFilter = f;
   renderPipeline();
 }
 
@@ -5589,14 +5659,28 @@ function fmtDue(due, ds) {
 function renderPipeline() {
   const pipeline = getPipeline();
 
-  // view toggle
-  document.getElementById('pipeViews').innerHTML =
-    '<button class="' + (pipeView === 'list' ? 'active' : '') + '" onclick="setPipeView(\'list\')" title="Spreadsheet view">' + ICONS.rows + ' List</button>'
-    + '<button class="' + (pipeView === 'board' ? 'active' : '') + '" onclick="setPipeView(\'board\')" title="Kanban board view">' + ICONS.board + ' Board</button>';
+  // counts for the filter chips
+  let nLeads = 0, nDeals = 0;
+  for (const r of allResults) { if (getStage(pipeline[r.id]) === '') nLeads++; else nDeals++; }
+
+  // view toggle + (list view) leads/deals filter
+  let viewsHtml = '<span class="pipe-views">'
+    + '<button class="' + (pipeView === 'list' ? 'active' : '') + '" onclick="setPipeView(\'list\')" title="Spreadsheet view">' + ICONS.rows + ' List</button>'
+    + '<button class="' + (pipeView === 'board' ? 'active' : '') + '" onclick="setPipeView(\'board\')" title="Kanban board view">' + ICONS.board + ' Board</button>'
+    + '</span>';
+  if (pipeView === 'list') {
+    viewsHtml += '<span class="pipe-views">'
+      + '<button class="' + (pipeFilter === 'all' ? 'active' : '') + '" onclick="setPipeFilter(\'all\')">All</button>'
+      + '<button class="' + (pipeFilter === 'leads' ? 'active' : '') + '" onclick="setPipeFilter(\'leads\')" title="Leads waiting in To contact - not deals yet">Leads <span style="opacity:.7">' + nLeads + '</span></button>'
+      + '<button class="' + (pipeFilter === 'deals' ? 'active' : '') + '" onclick="setPipeFilter(\'deals\')" title="Everything on a deal stage: Contacted through Payment link, plus Won and Lost">Deals <span style="opacity:.7">' + nDeals + '</span></button>'
+      + '</span>';
+  }
+  document.getElementById('pipeViews').innerHTML = viewsHtml;
 
   const board = document.getElementById('pipeBoard');
   if (!allResults.length) {
-    board.innerHTML = '<div class="pipe-board-empty">The pipeline is empty.<br>Star leads with the &#9733; button, or give any lead a label (Contacted, Call back...) and it lands here automatically.</div>';
+    board.className = 'pipe-board';
+    board.innerHTML = '<div class="pipe-board-empty">The pipeline is empty.<br>Star leads with the &#9733; button, select leads and hit <b>+ Pipeline</b>, or give any lead a label - they land here automatically.</div>';
     document.getElementById('pipeCounts').textContent = '';
     return;
   }
@@ -5606,13 +5690,53 @@ function renderPipeline() {
   for (const s of PIPE_STAGES) cols[s.key] = [];
   for (const r of allResults) cols[getStage(pipeline[r.id])].push(r);
 
-  const inPlay = allResults.length - cols['won'].length - cols['lost'].length;
   const demosOut = cols['demosent'].length + cols['postdemo'].length + cols['paymentlink'].length;
   document.getElementById('pipeCounts').innerHTML =
-    '<b>' + inPlay + '</b> in play &middot; <b>' + demosOut + '</b> demo' + (demosOut === 1 ? '' : 's') + ' out &middot; <b>' + cols['won'].length + '</b> won';
+    '<b>' + nLeads + '</b> to contact &middot; <b>' + (nDeals - cols['won'].length - cols['lost'].length) + '</b> live deal' + ((nDeals - cols['won'].length - cols['lost'].length) === 1 ? '' : 's') + ' &middot; <b>' + demosOut + '</b> demo' + (demosOut === 1 ? '' : 's') + ' out &middot; <b>' + cols['won'].length + '</b> won';
 
   if (pipeView === 'board') renderPipeBoard(cols, pipeline);
   else renderPipeList(pipeline);
+}
+
+/* the rows currently visible in the list view (filter + sort applied) */
+function pipeVisibleRows(pipeline) {
+  const stageIdx = {};
+  PIPE_STAGES.forEach((s, i) => { stageIdx[s.key] = i; });
+  let rows = allResults.filter(r => {
+    const stg = getStage(pipeline[r.id]);
+    if (pipeFilter === 'leads') return stg === '';
+    if (pipeFilter === 'deals') return stg !== '';
+    return true;
+  });
+  rows.sort((a, b) => {
+    const pa = pipeline[a.id] || {}, pb = pipeline[b.id] || {};
+    let v = 0;
+    if (pipeSortBy === 'name') v = a.name.toLowerCase().localeCompare(b.name.toLowerCase());
+    else if (pipeSortBy === 'stage') v = stageIdx[getStage(pa)] - stageIdx[getStage(pb)];
+    else {
+      const da = pa.due || '9999-12-31', db = pb.due || '9999-12-31';
+      v = da < db ? -1 : da > db ? 1 : 0;
+    }
+    if (v === 0) v = computeScore(b) - computeScore(a);
+    return pipeSortDir * v;
+  });
+  return rows;
+}
+
+function pipeToggleAll(e) {
+  if (e) e.stopPropagation();
+  const rows = pipeVisibleRows(getPipeline());
+  const all = rows.length && rows.every(r => selectedIds.has(r.id));
+  rows.forEach(r => { if (all) selectedIds.delete(r.id); else selectedIds.add(r.id); });
+  renderSelectionBar();
+  renderPipeline();
+}
+
+function makeDeal(id) {
+  setLeadStage(id, 'contacted');
+  setStatus(true, 'Moved to Contacted - it is a deal now.', 100);
+  setTimeout(() => setStatus(false), 2000);
+  render();
 }
 
 /* ---- board: compact Pipedrive-style cards ---- */
@@ -5671,25 +5795,12 @@ function renderPipeList(pipeline) {
   const board = document.getElementById('pipeBoard');
   board.className = 'plist-wrap';
 
-  const stageIdx = {};
-  PIPE_STAGES.forEach((s, i) => { stageIdx[s.key] = i; });
-
-  const rows = [...allResults];
-  rows.sort((a, b) => {
-    const pa = pipeline[a.id] || {}, pb = pipeline[b.id] || {};
-    let v = 0;
-    if (pipeSortBy === 'name') v = a.name.toLowerCase().localeCompare(b.name.toLowerCase());
-    else if (pipeSortBy === 'stage') v = stageIdx[getStage(pa)] - stageIdx[getStage(pb)];
-    else { // due: dated first (oldest first), undated last
-      const da = pa.due || '9999-12-31', db = pb.due || '9999-12-31';
-      v = da < db ? -1 : da > db ? 1 : 0;
-    }
-    if (v === 0) v = computeScore(b) - computeScore(a);
-    return pipeSortDir * v;
-  });
+  const rows = pipeVisibleRows(pipeline);
+  const allSelected = rows.length && rows.every(r => selectedIds.has(r.id));
 
   let h = '<div class="plist">'
     + '<div class="pl-row pl-head">'
+    + '<span class="pl-check"><input type="checkbox" onclick="pipeToggleAll(event)" ' + (allSelected ? 'checked' : '') + ' title="Select all visible" aria-label="Select all visible"></span>'
     + '<span class="pl-sortable" onclick="setPipeSort(\'name\')">Name' + pipeSortArrow('name') + '</span>'
     + '<span class="pl-sortable" onclick="setPipeSort(\'stage\')">Stage' + pipeSortArrow('stage') + '</span>'
     + '<span>Label</span>'
@@ -5700,15 +5811,25 @@ function renderPipeList(pipeline) {
     + '<span>By</span>'
     + '</div>';
 
+  if (!rows.length) {
+    h += '<div class="pipe-board-empty" style="border:none;">' + (pipeFilter === 'deals'
+      ? 'No deals yet. Tick leads and use <b>Set stage</b>, click <b>&rarr; Deal</b> on a lead, or drag cards on the Board.'
+      : 'Nothing here. Star leads or use <b>+ Pipeline</b> from any leads view.') + '</div>';
+  }
+
   for (const r of rows) {
     const p = pipeline[r.id] || {};
-    const stg = stageMeta(getStage(p));
+    const stgKey = getStage(p);
+    const stg = stageMeta(stgKey);
     const ds = dueState(p.due);
     const note = lastNoteLine(p.note);
     const town = r.searchLocation || '';
-    h += '<div class="pl-row" onclick="openLead(\'' + escAttr(r.id) + '\')" title="Click to open this lead">'
+    h += '<div class="pl-row' + (selectedIds.has(r.id) ? ' is-selected' : '') + '" onclick="openLead(\'' + escAttr(r.id) + '\')" title="Click to open this lead">'
+      + '<span class="pl-check"><input type="checkbox" onclick="event.stopPropagation(); toggleSelect(event, \'' + escAttr(r.id) + '\')" ' + (selectedIds.has(r.id) ? 'checked' : '') + ' aria-label="Select ' + escAttr(r.name) + '"></span>'
       + '<span class="pl-name"><span class="pc-temp t-' + r.temp + '" title="' + r.temp.toUpperCase() + '"></span><span class="pl-nm">' + esc(r.name) + '</span>' + (town ? '<span class="pl-town">' + esc(town) + '</span>' : '') + '</span>'
-      + '<span><span class="stg-pill ' + stg.cls + '">' + stg.label + '</span></span>'
+      + '<span class="pl-stage"><span class="stg-pill ' + stg.cls + '">' + stg.label + '</span>'
+      + (stgKey === '' ? '<button class="mk-deal" onclick="event.stopPropagation(); makeDeal(\'' + escAttr(r.id) + '\')" title="Move into the deal flow (Contacted stage)">&rarr; Deal</button>' : '')
+      + '</span>'
       + '<span>' + labelChip(p) + '</span>'
       + '<span class="pl-link">' + (r.phone ? '<a href="tel:' + escAttr(r.phone.replace(/\s/g, '')) + '" onclick="event.stopPropagation()">' + esc(r.phone) + '</a>' : '') + '</span>'
       + '<span class="pl-link pl-email">' + (r.email ? '<a href="mailto:' + escAttr(r.email) + '" onclick="event.stopPropagation()" title="' + escAttr(r.email) + '">' + esc(r.email) + '</a>' : '') + '</span>'
@@ -6007,9 +6128,9 @@ function render() {
     const angleLine = angleText ? '<div class="angle-line">' + angleText + '</div>' : '';
 
     html += '<div class="' + rowClass + '"' + dragAttrs + '>'
-      + '<div class="row-check"><input type="checkbox" id="chk-' + escAttr(r.id) + '" onclick="toggleSelect(event, \'' + escAttr(r.id) + '\')" ' + (selectedIds.has(r.id) ? 'checked' : '') + ' title="Tick to select - shift-click selects a range" aria-label="Select ' + escAttr(r.name) + '"></div>'
+      + '<div class="row-check" draggable="false" onmousedown="event.stopPropagation()"><input type="checkbox" id="chk-' + escAttr(r.id) + '" draggable="false" onclick="event.stopPropagation(); toggleSelect(event, \'' + escAttr(r.id) + '\')" ' + (selectedIds.has(r.id) ? 'checked' : '') + ' title="Tick to select - shift-click selects a range" aria-label="Select ' + escAttr(r.name) + '"></div>'
       + '<div><div class="biz-name">'
-      + '<button class="star-btn' + (savedSet.has(r.id) ? ' saved' : '') + '" onclick="toggleSaved(\'' + escAttr(r.id) + '\')" title="' + (savedSet.has(r.id) ? 'Saved - click to remove from the Saved list' : 'Save this lead to your Saved list with one click') + '" aria-label="Save lead">' + ICONS.star + '</button>'
+      + '<button class="star-btn' + (savedSet.has(r.id) ? ' saved' : '') + '" onclick="toggleSaved(\'' + escAttr(r.id) + '\')" title="' + (savedSet.has(r.id) ? 'On the Pipeline (Saved) - click to remove' : 'Add to the Pipeline - lands in the To contact column') + '" aria-label="Add to pipeline">' + ICONS.star + '</button>'
       + tag + '<span onclick="openLead(\'' + escAttr(r.id) + '\')" style="cursor:pointer;" title="Open this lead - statuses, follow-up date and notes in one place">' + esc(r.name) + '</span>'
       + (r.query && !/^CSV import/i.test(r.query) ? '<span class="industry-tag">' + esc(r.query.toLowerCase()) + '</span>' : '')
       + '</div>' + links + emailLine + socialRow + metaRow + oppRow + angleLine + attribution + notePreview + '</div>'

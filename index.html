@@ -36,6 +36,8 @@
       runs_ads text default '',
       last_review_at timestamptz,
       smm_activity text default '',
+      follow_up_at date,
+      stage text default '',
       created_at timestamptz default now(),
       updated_at timestamptz default now()
     );
@@ -50,6 +52,8 @@
     -- alter table leads add column if not exists runs_ads text default '';
     -- alter table leads add column if not exists last_review_at timestamptz;
     -- alter table leads add column if not exists smm_activity text default '';
+    -- alter table leads add column if not exists follow_up_at date;  (pipeline follow-up dates)
+    -- alter table leads add column if not exists stage text default '';  (pipeline deal stages)
     alter table leads enable row level security;
     create policy "allow anon" on leads for all using (true) with check (true);
 
@@ -1697,6 +1701,7 @@
   .act-btn.on-callback { background: color-mix(in srgb, var(--cold) 12%, transparent); color: var(--cold); border-color: color-mix(in srgb, var(--cold) 36%, transparent); }
   .act-btn.on-meeting { background: color-mix(in srgb, var(--hot) 18%, transparent); color: var(--hot); border-color: var(--hot); font-weight: 700; }
   .act-btn.on-saidno { background: color-mix(in srgb, var(--danger) 12%, transparent); color: var(--danger); border-color: color-mix(in srgb, var(--danger) 36%, transparent); }
+  .act-btn.on-won { background: color-mix(in srgb, var(--gold-500) 18%, transparent); color: var(--text-gold); border-color: var(--border-gold); font-weight: 700; }
 
   /* industry tag beside the business name */
   .industry-tag {
@@ -2079,6 +2084,256 @@
   body.light .meta-chip.warn { background: color-mix(in srgb, var(--amber-500) 14%, transparent); }
   body.light .meta-chip.info { background: color-mix(in srgb, var(--slate-500) 12%, transparent); }
   body.light .meta-chip.bad  { background: color-mix(in srgb, var(--oxblood-500) 10%, transparent); }
+
+  /* =========================================================
+     PIPELINE BOARD - the working deck, Pipedrive distilled
+     ========================================================= */
+  .pipe-topbar {
+    display: flex; justify-content: space-between; align-items: center; gap: 12px;
+    flex-wrap: wrap; margin-bottom: 12px;
+  }
+  .pipe-hint { font-size: 12.5px; color: var(--text-dim); line-height: 1.5; }
+  .pipe-hint b { color: var(--text-gold); }
+  .pipe-counts { font-size: 12px; color: var(--text-dim); font-variant-numeric: tabular-nums; white-space: nowrap; }
+  .pipe-counts b { color: var(--text); }
+
+  .pipe-board {
+    display: flex; gap: 12px; align-items: flex-start;
+    overflow-x: auto; padding-bottom: 16px;
+    -webkit-overflow-scrolling: touch;
+  }
+  .pipe-col {
+    flex: 0 0 252px; min-width: 252px;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-lg);
+    box-shadow: inset 0 1px 0 rgba(255,255,255,0.03), 0 8px 24px rgba(0,0,0,0.2);
+    transition: border-color 0.15s, background 0.15s;
+  }
+  body.light .pipe-col { box-shadow: 0 1px 2px rgba(54,50,43,0.04), 0 8px 24px rgba(54,50,43,0.05); }
+  .pipe-col.drop-hover {
+    border-color: var(--accent);
+    background: color-mix(in srgb, var(--accent) 6%, var(--surface));
+  }
+  .pipe-col-head {
+    display: flex; align-items: center; gap: 8px;
+    padding: 11px 13px 9px;
+    border-bottom: 2px solid var(--col-color, var(--border));
+    font-size: 11px; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase;
+    color: var(--text-dim);
+  }
+  .pipe-col-head .dot { width: 8px; height: 8px; border-radius: 50%; background: var(--col-color, var(--text-dim)); flex-shrink: 0; }
+  .pipe-col-head .count {
+    margin-left: auto; font-size: 11px; font-weight: 600;
+    background: var(--surface-2); border: 1px solid var(--border);
+    border-radius: 100px; padding: 1px 8px; color: var(--text-dim);
+    font-variant-numeric: tabular-nums;
+  }
+  .pipe-cards {
+    display: flex; flex-direction: column; gap: 8px;
+    padding: 10px; min-height: 64px; max-height: 64vh; overflow-y: auto;
+  }
+  .pipe-card {
+    background: var(--surface-2);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 10px 12px;
+    cursor: pointer;
+    transition: border-color 0.15s, transform 0.15s var(--ease-out), box-shadow 0.15s;
+  }
+  body.light .pipe-card { background: #FFFFFF; }
+  .pipe-card:hover {
+    border-color: var(--border-light);
+    transform: translateY(-1px);
+    box-shadow: 0 6px 16px rgba(0,0,0,0.25);
+  }
+  body.light .pipe-card:hover { box-shadow: 0 6px 16px rgba(54,50,43,0.12); }
+  .pipe-card.drag-ghost { opacity: 0.4; }
+  .pipe-card.is-overdue { border-left: 3px solid var(--danger); }
+  .pc-top { display: flex; align-items: flex-start; gap: 7px; }
+  .pc-name { font-weight: 600; font-size: 13.5px; line-height: 1.35; letter-spacing: -0.01em; flex: 1; }
+  .pc-temp { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; margin-top: 5px; }
+  .pc-temp.t-hot { background: var(--hot); } .pc-temp.t-warm { background: var(--warm); } .pc-temp.t-cold { background: var(--cold); }
+  .pc-meta { font-size: 11px; color: var(--text-dim); margin-top: 3px; }
+  .pc-note {
+    font-size: 11px; color: var(--text-dim); font-style: italic; margin-top: 5px;
+    white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+    border-left: 2px solid var(--border); padding-left: 7px;
+  }
+  .pc-foot { display: flex; align-items: center; gap: 6px; margin-top: 7px; flex-wrap: wrap; }
+  .pc-due {
+    display: inline-flex; align-items: center; gap: 4px;
+    font-size: 10px; font-weight: 700; padding: 2px 7px; border-radius: 100px;
+    background: var(--surface); border: 1px solid var(--border); color: var(--text-dim);
+  }
+  body.light .pc-due { background: var(--surface-2); }
+  .pc-due.overdue { background: color-mix(in srgb, var(--danger) 14%, transparent); color: var(--danger); border-color: color-mix(in srgb, var(--danger) 40%, transparent); }
+  .pc-due.today { background: color-mix(in srgb, var(--warm) 14%, transparent); color: var(--warm); border-color: color-mix(in srgb, var(--warm) 40%, transparent); }
+  .pc-by { font-size: 10px; color: var(--text-dim); margin-left: auto; }
+  .pc-act {
+    background: transparent; border: 1px solid var(--border); border-radius: 6px;
+    color: var(--text-dim); cursor: pointer; padding: 3px 7px;
+    display: inline-flex; align-items: center; transition: all 0.12s;
+  }
+  .pc-act:hover { color: var(--text); border-color: var(--border-light); }
+  .pc-act.wa { color: #25D366; }
+  .pipe-col-empty {
+    font-size: 11.5px; color: var(--text-dim); text-align: center;
+    padding: 18px 10px; border: 1px dashed var(--border); border-radius: var(--radius);
+    opacity: 0.7;
+  }
+  .pipe-board-empty {
+    width: 100%; text-align: center; padding: 56px 24px;
+    border: 1px dashed var(--border); border-radius: var(--radius-lg);
+    color: var(--text-dim); font-size: 14px; line-height: 1.7;
+  }
+
+  /* ===== LEAD DRAWER ===== */
+  .ld-sub { font-size: 12.5px; color: var(--text-dim); margin-bottom: 14px; line-height: 1.5; }
+  .ld-contact-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 6px 14px; margin-bottom: 4px; }
+  .ld-contact-grid a { color: var(--text); text-decoration: none; }
+  .ld-contact-grid a:hover { color: var(--accent); }
+  .ld-row { font-size: 13px; display: flex; align-items: center; gap: 6px; min-width: 0; }
+  .ld-row .ld-k { font-size: 10.5px; font-weight: 600; color: var(--text-dim); text-transform: uppercase; letter-spacing: 0.06em; width: 52px; flex-shrink: 0; }
+  .ld-row .ld-v { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .ld-status-row { display: flex; gap: 6px; flex-wrap: wrap; }
+  .ld-due-row { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+  .ld-due-row input[type="date"] {
+    background: var(--bg); border: 1px solid var(--border); border-radius: var(--radius);
+    color: var(--text); font-family: var(--font-sans); font-size: 13px; padding: 7px 10px;
+  }
+  body.light .ld-due-row input[type="date"] { background: #ffffff; }
+  .ld-due-row input[type="date"]:focus { outline: none; border-color: var(--accent-dark); }
+  .ld-notes { display: flex; flex-direction: column; gap: 6px; max-height: 220px; overflow-y: auto; margin-bottom: 10px; }
+  .ld-note-item {
+    background: var(--surface-2); border: 1px solid var(--border); border-radius: var(--radius);
+    padding: 8px 11px; font-size: 12.5px; line-height: 1.5; color: var(--text);
+  }
+  body.light .ld-note-item { background: var(--surface-2); }
+  .ld-note-item .ld-stamp { color: var(--text-gold); font-weight: 600; font-size: 11px; margin-right: 6px; }
+  .ld-note-add { display: flex; gap: 8px; }
+  .ld-note-add input {
+    flex: 1; background: var(--bg); border: 1px solid var(--border); border-radius: var(--radius);
+    color: var(--text); font-family: var(--font-sans); font-size: 13px; padding: 9px 12px;
+  }
+  body.light .ld-note-add input { background: #ffffff; }
+  .ld-note-add input:focus { outline: none; border-color: var(--accent-dark); box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent) 16%, transparent); }
+  .ld-no-notes { font-size: 12px; color: var(--text-dim); font-style: italic; }
+
+  /* ---- view toggle (list / board) ---- */
+  .pipe-views {
+    display: inline-flex; gap: 0;
+    background: var(--surface); border: 1px solid var(--border);
+    border-radius: var(--radius); padding: 3px; flex-shrink: 0;
+  }
+  .pipe-views button {
+    background: transparent; border: none; cursor: pointer;
+    font-family: var(--font-sans); font-size: 12.5px; font-weight: 500;
+    color: var(--text-dim); padding: 6px 13px; border-radius: 7px;
+    display: inline-flex; align-items: center; gap: 6px;
+    transition: all 0.15s;
+  }
+  .pipe-views button:hover { color: var(--text); }
+  .pipe-views button.active { background: var(--accent); color: var(--accent-contrast); font-weight: 600; }
+
+  /* ---- stage pills: solid Pipedrive label colours ---- */
+  .stg-pill {
+    display: inline-block; font-size: 10px; font-weight: 700; letter-spacing: 0.05em;
+    padding: 3px 9px; border-radius: 100px; text-transform: uppercase; white-space: nowrap;
+  }
+  .stg-new { background: var(--surface-2); color: var(--text-dim); border: 1px solid var(--border); }
+  .stg-contacted { background: var(--slate-500); color: #FFFFFF; }
+  .stg-demotosend { background: var(--amber-500); color: var(--obsidian); }
+  .stg-demosent { background: var(--gold-500); color: var(--obsidian); }
+  .stg-postdemo { background: var(--verdigris-500); color: #FFFFFF; }
+  .stg-paymentlink { background: var(--gold-700); color: #FFFFFF; }
+  .stg-won { background: linear-gradient(135deg, var(--gold-600), var(--gold-400)); color: var(--obsidian); }
+  .stg-lost { background: var(--oxblood-500); color: #FFFFFF; }
+
+  /* ---- stage chips in the drawer ---- */
+  .stg-chip {
+    font-size: 11.5px; font-weight: 600; padding: 5px 12px; border-radius: 100px;
+    border: 1px solid var(--border); background: var(--surface-2); color: var(--text-dim);
+    cursor: pointer; font-family: var(--font-sans); transition: all 0.15s;
+  }
+  .stg-chip:hover { color: var(--text); border-color: var(--border-light); transform: translateY(-1px); }
+  .stg-chip.active { border-color: transparent; font-weight: 700; }
+
+  /* ---- the Excel list ---- */
+  .plist-wrap {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-lg);
+    overflow-x: auto;
+    box-shadow: inset 0 1px 0 rgba(255,255,255,0.035), 0 10px 30px rgba(0,0,0,0.28);
+  }
+  body.light .plist-wrap { background: #FFFFFF; box-shadow: 0 1px 2px rgba(54,50,43,0.04), 0 8px 24px rgba(54,50,43,0.06); }
+  .plist { min-width: 1020px; }
+  .pl-row {
+    display: grid;
+    grid-template-columns: 2.4fr 122px 104px 132px 1.7fr 92px 2.2fr 40px;
+    gap: 10px; align-items: center;
+    padding: 8px 16px;
+    border-bottom: 1px solid var(--border-faint);
+    font-size: 13px;
+    cursor: pointer;
+    transition: background 0.1s;
+  }
+  .pl-row:last-child { border-bottom: none; }
+  .pl-row:not(.pl-head):hover { background: color-mix(in srgb, var(--accent) 5%, transparent); box-shadow: inset 2px 0 0 var(--accent); }
+  .pl-head {
+    cursor: default;
+    background: var(--surface-2);
+    font-size: 10.5px; font-weight: 600; color: var(--text-dim);
+    text-transform: uppercase; letter-spacing: 0.08em;
+    border-bottom: 1px solid var(--border);
+    padding-top: 9px; padding-bottom: 9px;
+    position: sticky; top: 0; z-index: 2;
+  }
+  body.light .pl-head { background: var(--surface-card-2); }
+  .pl-sortable { cursor: pointer; user-select: none; }
+  .pl-sortable:hover { color: var(--text); }
+  .pl-name { display: flex; align-items: center; gap: 8px; min-width: 0; }
+  .pl-name .pc-temp { margin-top: 0; }
+  .pl-nm { font-weight: 600; letter-spacing: -0.01em; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .pl-town { font-size: 11px; color: var(--text-dim); white-space: nowrap; flex-shrink: 0; }
+  .pl-link { min-width: 0; }
+  .pl-link a {
+    color: var(--cold); text-decoration: none; font-variant-numeric: tabular-nums;
+    white-space: nowrap;
+  }
+  body.light .pl-link a { color: var(--slate-700); }
+  .pl-link a:hover { text-decoration: underline; }
+  .pl-email { overflow: hidden; }
+  .pl-email a { display: block; overflow: hidden; text-overflow: ellipsis; }
+  .pl-due { font-size: 12px; color: var(--text-dim); font-variant-numeric: tabular-nums; white-space: nowrap; }
+  .pl-due.overdue { color: var(--danger); font-weight: 700; }
+  .pl-due.today { color: var(--hot); font-weight: 700; }
+  .pl-note {
+    font-size: 12px; color: var(--text-dim); font-style: italic;
+    white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  }
+  .pl-av {
+    width: 22px; height: 22px; border-radius: 50%;
+    display: inline-flex; align-items: center; justify-content: center;
+    font-size: 10px; font-weight: 700; flex-shrink: 0;
+  }
+  .pl-av.av-s { background: linear-gradient(135deg, #B08438, #DCB765); color: var(--obsidian); }
+  .pl-av.av-j { background: linear-gradient(135deg, #49729A, #91B1CC); color: var(--obsidian); }
+  .pl-av.av-o { background: var(--surface-2); color: var(--text-dim); border: 1px solid var(--border); }
+  .pc-by-wrap { margin-left: auto; display: inline-flex; }
+  .pipe-card .meta-chip { font-size: 9.5px; padding: 1.5px 6px; }
+
+  @media (max-width: 900px) {
+    .pipe-col { flex: 0 0 84vw; min-width: 84vw; max-width: 320px; }
+    .pipe-board { scroll-snap-type: x mandatory; margin: 0 -12px; padding: 0 12px 16px; }
+    .pipe-col { scroll-snap-align: start; }
+    .pipe-cards { max-height: none; }
+    .ld-contact-grid { grid-template-columns: 1fr; }
+    .pipe-topbar { gap: 8px; }
+    .pipe-hint { display: none; }
+    .plist-wrap { margin: 0 -12px; border-radius: 0; border-left: none; border-right: none; }
+  }
 </style>
 </head>
 <body>
@@ -2158,6 +2413,11 @@
 <!-- ===== GEMINI MODAL ===== -->
 <div class="modal-overlay" id="geminiModal" onclick="if(event.target===this)closeGemini()">
   <div class="modal-card" id="geminiCard"></div>
+</div>
+
+<!-- ===== LEAD DRAWER (pipeline card detail) ===== -->
+<div class="modal-overlay" id="leadModal" onclick="if(event.target===this)closeLead()">
+  <div class="modal-card" id="leadCard"></div>
 </div>
 
 <!-- ===== LOGIN GATE ===== -->
@@ -2349,7 +2609,7 @@
         <label><input type="checkbox" id="phoneOnly" onchange="render()"> Has phone</label>
       </div>
       <div class="mini-filter">
-        <label title="Hides leads labelled contacted, skipped or said-no. No-answer, call-back and meeting leads stay visible - they still need working."><input type="checkbox" id="hideDone" onchange="render()" checked> Hide finished leads</label>
+        <label title="Hides leads labelled contacted, won, skipped or said-no. No-answer, call-back and meeting leads stay visible - they still need working. The Pipeline tab always shows everything."><input type="checkbox" id="hideDone" onchange="render()" checked> Hide finished leads</label>
       </div>
       <div class="mini-filter">
         <label title="Only show leads this search found for the first time - hides everything already in your database"><input type="checkbox" id="newOnly" onchange="render()"> New finds only</label>
@@ -2414,6 +2674,16 @@
 
   <!-- ===== RESULTS ===== -->
   <div class="results" id="results"></div>
+
+  <!-- ===== PIPELINE BOARD ===== -->
+  <div id="pipelineSection" style="display:none;">
+    <div class="pipe-topbar">
+      <span class="pipe-views" id="pipeViews"></span>
+      <span class="pipe-hint">Saved leads plus everything you've worked. Click any row or card to open it &middot; on the board, drag cards between stages and drop on <b>Won</b> to close the deal.</span>
+      <span class="pipe-counts" id="pipeCounts"></span>
+    </div>
+    <div class="pipe-board" id="pipeBoard"></div>
+  </div>
 
   <!-- ===== CRM ===== -->
   <div class="sigil" aria-hidden="true">&mdash;&ensp;ARGVS &middot; PANOPTES &middot; MMXXVI&ensp;&mdash;</div>
@@ -2500,6 +2770,8 @@ const DEMO_LEADS = [
 function loadDemo() {
   demoMode = true;
   viewMode = 'search';
+  document.getElementById('pipelineSection').style.display = 'none';
+  document.getElementById('crmSection').style.display = 'none';
   allResults = DEMO_LEADS.map(d => {
     const lead = { ...d, temp: classify(d.website), socials: d.socials || {} };
     detectSocialFromWebsite(lead);
@@ -2593,7 +2865,9 @@ function sbEndpoint() {
 function leadToRow(r, query) {
   return {
     id: r.id,
-    query: query || document.getElementById('query').value.trim(),
+    // the lead's own remembered vertical wins - never let whatever is sitting in
+    // the search box overwrite it when re-saving from All leads / scans / AI actions
+    query: r.query || query || document.getElementById('query').value.trim(),
     name: r.name,
     address: r.address,
     phone: r.phone,
@@ -2709,7 +2983,15 @@ async function fetchCloudLeads() {
   const rows = await res.json();
   const p = store.get('st_pipeline', {});
   for (const row of rows) {
-    if (row.status || row.note) p[row.id] = { status: row.status || '', note: row.note || '', by: row.status_by || '' };
+    if (row.status || row.note || row.follow_up_at || row.stage) {
+      p[row.id] = {
+        status: row.status || '',
+        note: row.note || '',
+        by: row.status_by || '',
+        due: (row.follow_up_at ? String(row.follow_up_at).slice(0, 10) : (p[row.id]?.due || '')),
+        stage: row.stage || p[row.id]?.stage || ''
+      };
+    }
   }
   store.set('st_pipeline', p);
   return rows.map(rowToLead);
@@ -2976,12 +3258,40 @@ async function switchView(mode) {
   if (mode === 'crm') {
     leadUi.forEach(id => document.getElementById(id).style.display = 'none');
     document.getElementById('quickStart').style.display = 'none';
+    document.getElementById('pipelineSection').style.display = 'none';
     document.getElementById('crmSection').style.display = 'block';
     renderTabs();
     if (!clientsLoaded) await loadClients();
     renderCRM();
     return;
   }
+  if (mode === 'pipeline') {
+    leadUi.forEach(id => document.getElementById(id).style.display = 'none');
+    document.getElementById('quickStart').style.display = 'none';
+    document.getElementById('crmSection').style.display = 'none';
+    renderTabs();
+    setStatus(true, 'Laying out the board...', 50);
+    try {
+      const everything = sbConfigured() ? await fetchCloudLeads() : localAllLeads();
+      const pipeline = getPipeline();
+      const savedList = lists.find(l => l.name.toLowerCase() === SAVED_LIST_NAME.toLowerCase());
+      const savedSet = new Set(savedList ? savedList.leadIds : []);
+      allResults = everything.filter(r => {
+        const p = pipeline[r.id] || {};
+        if (p.status === 'skipped') return false;
+        return savedSet.has(r.id) || !!p.status || !!p.due || !!p.stage;
+      });
+    } catch (e) {
+      setStatus(false);
+      showError(esc(e.message));
+      return;
+    }
+    setStatus(false);
+    document.getElementById('pipelineSection').style.display = 'block';
+    renderPipeline();
+    return;
+  }
+  document.getElementById('pipelineSection').style.display = 'none';
   document.getElementById('crmSection').style.display = 'none';
   document.getElementById('smmAuditBtn').style.display = (mode === 'smm') ? 'inline-flex' : 'none';
   // lists and All leads show everything by default; the Hot+Warm default only makes sense for fresh searches
@@ -3043,6 +3353,7 @@ function renderTabs() {
   let h = '';
   h += '<button class="tab ' + (viewMode === 'search' ? 'active' : '') + '" onclick="switchView(\'search\')">Search results' + (lastSearchResults.length ? ' <span class="count">' + lastSearchResults.length + '</span>' : '') + '</button>';
   h += '<button class="tab ' + (viewMode === 'all' ? 'active' : '') + '" onclick="switchView(\'all\')" title="Every lead ever pulled, saved automatically">All leads</button>';
+  h += '<button class="tab ' + (viewMode === 'pipeline' ? 'active' : '') + '" onclick="switchView(\'pipeline\')" title="Your working board: saved leads and everything with a status, laid out by stage - drag cards between columns">' + ICONS.board + ' Pipeline</button>';
   h += '<button class="tab ' + (viewMode === 'smm' ? 'active' : '') + '" onclick="switchView(\'smm\')" title="Social media prospects: businesses with no socials, dormant pages, or other neglect signals - ranked by SMM fit">SMM Prospects</button>';
   for (const l of lists) {
     const pulse = (pulseListId === l.id) ? ' tab-pulse' : '';
@@ -3052,10 +3363,9 @@ function renderTabs() {
       + esc(l.name) + ' <span class="count">' + l.leadIds.length + '</span></button>';
   }
   h += '<button class="tab new-list" onclick="createList(false)" title="Create a list - or drag leads here to make a new list from them" ondragover="tabDragOver(event)" ondragleave="tabDragLeave(event)" ondrop="tabDropNew(event)">+ New list</button>';
-  h += '<button class="tab' + (viewMode === 'crm' ? ' active' : '') + '" style="margin-left:auto;" onclick="switchView(\'crm\')" title="Your client book: retainers, services, statuses and next actions">\u2b50 Clients' + (clients.length ? ' <span class="count">' + clients.length + '</span>' : '') + '</button>';
-  if (pulseListId) setTimeout(() => { pulseListId = null; }, 900);
 
-  if (viewMode !== 'search' && viewMode !== 'all') {
+  // list management actions sit beside the list tabs, before the right-aligned Clients tab
+  if (lists.some(l => l.id === viewMode)) {
     h += '<span class="list-actions">';
     h += '<button class="act-btn" onclick="renameCurrentList()">Rename</button>';
     if (lists.length > 1) {
@@ -3066,6 +3376,9 @@ function renderTabs() {
     h += '<button class="act-btn" onclick="deleteCurrentList()">Delete list</button>';
     h += '</span>';
   }
+
+  h += '<button class="tab' + (viewMode === 'crm' ? ' active' : '') + '" style="margin-left:auto;" onclick="switchView(\'crm\')" title="Your client book: retainers, services, statuses and next actions">\u2b50 Clients' + (clients.length ? ' <span class="count">' + clients.length + '</span>' : '') + '</button>';
+  if (pulseListId) setTimeout(() => { pulseListId = null; }, 900);
   bar.innerHTML = h;
 }
 
@@ -3549,7 +3862,7 @@ function celebrateWon(done) {
 function markAsWon(leadId) {
   const r = findLead(leadId);
   if (!r) return;
-  setLeadStatus(leadId, 'contacted');
+  setLeadStatusDirect(leadId, 'won');
   const noSocials = !Object.keys(r.socials || {}).length;
   celebrateWon(() => switchView('crm').then(() => {
     openClientForm(null, {
@@ -3731,19 +4044,96 @@ const STATUS_META = {
   noanswer: { label: 'No answer', on: 'on-noanswer', chip: 'warn', chipText: 'No answer' },
   callback: { label: 'Call back', on: 'on-callback', chip: 'info', chipText: 'Call back' },
   meeting: { label: 'Meeting', on: 'on-meeting', chip: 'good', chipText: 'Meeting booked' },
+  won: { label: 'Won', on: 'on-won', chip: 'good', chipText: 'Won' },
   saidno: { label: 'Said no', on: 'on-saidno', chip: 'bad', chipText: 'Said no' },
   skipped: { label: 'Skip', on: 'on-skipped', chip: '', chipText: 'Skipped' }
 };
-const CLOSED_STATUSES = ['contacted', 'skipped', 'saidno'];
+const CLOSED_STATUSES = ['contacted', 'skipped', 'saidno', 'won'];
 
 function setLeadStatus(id, status) {
   const p = getPipeline();
   if (!p[id]) p[id] = {};
   p[id].status = (p[id].status === status) ? '' : status;
   p[id].by = p[id].status ? currentProfile : '';
+  applyAutoStage(p, id);
   if (!demoMode) store.set('st_pipeline', p);
   sbUpdateLead(id, { status: p[id].status, status_by: p[id].by, note: p[id].note || '' });
   render();
+}
+
+// direct set (no toggle) - used by the pipeline board drag-drop and Won flow
+function setLeadStatusDirect(id, status) {
+  const p = getPipeline();
+  if (!p[id]) p[id] = {};
+  if (p[id].status === status) return;
+  p[id].status = status;
+  p[id].by = status ? currentProfile : '';
+  applyAutoStage(p, id);
+  if (!demoMode) store.set('st_pipeline', p);
+  sbUpdateLead(id, { status: p[id].status, status_by: p[id].by, note: p[id].note || '' });
+  render();
+}
+
+/* ===== PIPELINE STAGES (deal stage, separate from the contact label) =====
+   Mirrors the SquareTwo Pipedrive flow. One-time SQL for cross-device stages:
+   alter table leads add column if not exists stage text default '';            */
+function getStage(p) {
+  if (p && p.stage && PIPE_STAGE_KEYS.has(p.stage)) return p.stage;
+  const st = (p && p.status) || '';
+  if (st === 'won') return 'won';
+  if (st === 'saidno') return 'lost';
+  if (st === 'contacted' || st === 'noanswer' || st === 'callback' || st === 'meeting') return 'contacted';
+  return '';
+}
+
+function applyAutoStage(p, id) {
+  // closing labels pull the stage with them so the board never lies
+  if (p[id].status === 'won' && p[id].stage !== 'won') { p[id].stage = 'won'; syncStageCloud(id, 'won'); }
+  if (p[id].status === 'saidno' && p[id].stage !== 'lost') { p[id].stage = 'lost'; syncStageCloud(id, 'lost'); }
+}
+
+function syncStageCloud(id, stage) {
+  if (!sbConfigured() || demoMode) return;
+  // fire-and-forget, separate from status sync so a missing column never blocks it
+  fetch(sbEndpoint() + '?id=eq.' + encodeURIComponent(id), {
+    method: 'PATCH',
+    headers: { ...sbHeaders(), 'Prefer': 'return=minimal' },
+    body: JSON.stringify({ stage: stage })
+  }).catch(() => {});
+}
+
+function setLeadStage(id, stage) {
+  const p = getPipeline();
+  if (!p[id]) p[id] = {};
+  p[id].stage = stage;
+  if (!demoMode) store.set('st_pipeline', p);
+  syncStageCloud(id, stage);
+}
+
+/* follow-up dates (local-first; synced to a follow_up_at column when it exists) */
+function setLeadDue(id, date) {
+  const p = getPipeline();
+  if (!p[id]) p[id] = {};
+  p[id].due = date || '';
+  if (!demoMode) store.set('st_pipeline', p);
+  // separate fire-and-forget call so a missing column never blocks status/note sync.
+  // One-time SQL to share follow-ups across devices:
+  // alter table leads add column if not exists follow_up_at date;
+  if (sbConfigured() && !demoMode) {
+    fetch(sbEndpoint() + '?id=eq.' + encodeURIComponent(id), {
+      method: 'PATCH',
+      headers: { ...sbHeaders(), 'Prefer': 'return=minimal' },
+      body: JSON.stringify({ follow_up_at: date || null })
+    }).catch(() => {});
+  }
+}
+
+function dueState(due) {
+  if (!due) return '';
+  const today = new Date().toISOString().slice(0, 10);
+  if (due < today) return 'overdue';
+  if (due === today) return 'today';
+  return 'upcoming';
 }
 
 function setLeadNote(id, note) {
@@ -3761,9 +4151,28 @@ function toggleNote(id) {
 }
 
 function clearPipeline() {
-  if (!confirm('Reset all contacted/skipped statuses and notes?')) return;
-  if (demoMode) demoPipeline = {};
-  else store.set('st_pipeline', {});
+  if (!confirm('Reset ALL statuses, notes and follow-ups on every lead?\n\nThis clears them in the cloud too, on both devices. This cannot be undone.')) return;
+  if (demoMode) { demoPipeline = {}; render(); return; }
+  store.set('st_pipeline', {});
+  // clear in the cloud as well, otherwise the next load resurrects everything
+  if (sbConfigured()) {
+    fetch(sbEndpoint() + '?or=(status.neq."",note.neq."")', {
+      method: 'PATCH',
+      headers: { ...sbHeaders(), 'Prefer': 'return=minimal' },
+      body: JSON.stringify({ status: '', status_by: '', note: '', updated_at: new Date().toISOString() })
+    }).catch(() => {});
+    // follow-ups and stages cleared separately so a missing column never blocks the status reset
+    fetch(sbEndpoint() + '?follow_up_at=not.is.null', {
+      method: 'PATCH',
+      headers: { ...sbHeaders(), 'Prefer': 'return=minimal' },
+      body: JSON.stringify({ follow_up_at: null })
+    }).catch(() => {});
+    fetch(sbEndpoint() + '?or=(stage.neq."")', {
+      method: 'PATCH',
+      headers: { ...sbHeaders(), 'Prefer': 'return=minimal' },
+      body: JSON.stringify({ stage: '' })
+    }).catch(() => {});
+  }
   render();
 }
 
@@ -4303,12 +4712,14 @@ function closePitch() {
 
 document.addEventListener('keydown', e => {
   if (e.key !== 'Escape') return;
-  const pitchOpen = document.getElementById('pitchModal').classList.contains('open');
-  const gemOpen = document.getElementById('geminiModal').classList.contains('open');
-  const crmOpen = document.getElementById('crmModal').classList.contains('open');
-  if (pitchOpen) { closePitch(); return; }
-  if (gemOpen) { closeGemini(); return; }
-  if (crmOpen) { closeClientForm(); return; }
+  if (document.getElementById('pitchModal').classList.contains('open')) { closePitch(); return; }
+  if (document.getElementById('geminiModal').classList.contains('open')) { closeGemini(); return; }
+  if (document.getElementById('crmModal').classList.contains('open')) { closeClientForm(); return; }
+  if (document.getElementById('leadModal').classList.contains('open')) { closeLead(); return; }
+  const openPanel = document.querySelector('.tpl-panel.open');
+  if (openPanel) { openPanel.classList.remove('open'); return; }
+  const openMenu = document.querySelector('.export-menu.open, .sel-menu.open');
+  if (openMenu) { openMenu.classList.remove('open'); return; }
   if (selectedIds.size) { clearSelection(); render(); }
 });
 
@@ -4993,6 +5404,9 @@ async function runSearch() {
   }
 
   const locations = locationRaw.split(',').map(s => s.trim()).filter(Boolean);
+  // a search always lands on the Search results view, whatever tab was open
+  document.getElementById('pipelineSection').style.display = 'none';
+  document.getElementById('crmSection').style.display = 'none';
   showSearchSkeleton();
   document.getElementById('searchBtn').disabled = true;
   allResults = [];
@@ -5109,8 +5523,359 @@ function setSort(field) {
   render();
 }
 
+/* ===== PIPELINE (Pipedrive, distilled): list + board over the same stages ===== */
+const PIPE_STAGES = [
+  { key: '', label: 'To contact', cls: 'stg-new', color: 'var(--text-tertiary)' },
+  { key: 'contacted', label: 'Contacted', cls: 'stg-contacted', color: 'var(--cold)' },
+  { key: 'demotosend', label: 'Demo to send', cls: 'stg-demotosend', color: 'var(--warm)' },
+  { key: 'demosent', label: 'Demo sent', cls: 'stg-demosent', color: 'var(--gold)' },
+  { key: 'postdemo', label: 'Post-demo talk', cls: 'stg-postdemo', color: 'var(--hot)' },
+  { key: 'paymentlink', label: 'Payment link', cls: 'stg-paymentlink', color: 'var(--gold)' },
+  { key: 'won', label: 'Won', cls: 'stg-won', color: 'var(--gold)' },
+  { key: 'lost', label: 'Lost', cls: 'stg-lost', color: 'var(--danger)' }
+];
+const PIPE_STAGE_KEYS = new Set(PIPE_STAGES.map(s => s.key));
+const PIPE_LABEL_KEYS = ['noanswer', 'callback', 'meeting']; // shown as small labels, not columns
+
+function stageMeta(key) { return PIPE_STAGES.find(s => s.key === key) || PIPE_STAGES[0]; }
+
+function lastNoteLine(note) {
+  if (!note) return '';
+  const lines = String(note).split('\n').map(s => s.trim()).filter(Boolean);
+  return lines.length ? lines[lines.length - 1] : '';
+}
+
+let pipeView = store.get('st_pipe_view', 'list'); // 'list' | 'board'
+let pipeSortBy = 'due';   // 'name' | 'stage' | 'due'
+let pipeSortDir = 1;
+
+function setPipeView(v) {
+  pipeView = v;
+  store.set('st_pipe_view', v);
+  renderPipeline();
+}
+
+function setPipeSort(field) {
+  if (pipeSortBy === field) pipeSortDir *= -1;
+  else { pipeSortBy = field; pipeSortDir = 1; }
+  renderPipeline();
+}
+
+function pipeSortArrow(field) {
+  if (pipeSortBy !== field) return '';
+  return pipeSortDir === 1 ? ' ↑' : ' ↓';
+}
+
+function pcAvatar(by) {
+  if (!by || by === 'Guest') return '';
+  const cls = by === 'Sam' ? 'av-s' : by === 'Jack' ? 'av-j' : 'av-o';
+  return '<span class="pl-av ' + cls + '" title="Worked by ' + escAttr(by) + '">' + esc(by.charAt(0)) + '</span>';
+}
+
+function labelChip(p, mini) {
+  if (!p.status || !PIPE_LABEL_KEYS.includes(p.status)) return '';
+  const sm = STATUS_META[p.status];
+  return '<span class="meta-chip ' + sm.chip + (mini ? '' : '') + '">' + sm.chipText + '</span>';
+}
+
+function fmtDue(due, ds) {
+  if (!due) return '';
+  if (ds === 'overdue' || ds === 'today' || ds === 'upcoming') {
+    return new Date(due + 'T00:00').toLocaleDateString('en-IE', { day: 'numeric', month: 'short' });
+  }
+  return '';
+}
+
+function renderPipeline() {
+  const pipeline = getPipeline();
+
+  // view toggle
+  document.getElementById('pipeViews').innerHTML =
+    '<button class="' + (pipeView === 'list' ? 'active' : '') + '" onclick="setPipeView(\'list\')" title="Spreadsheet view">' + ICONS.rows + ' List</button>'
+    + '<button class="' + (pipeView === 'board' ? 'active' : '') + '" onclick="setPipeView(\'board\')" title="Kanban board view">' + ICONS.board + ' Board</button>';
+
+  const board = document.getElementById('pipeBoard');
+  if (!allResults.length) {
+    board.innerHTML = '<div class="pipe-board-empty">The pipeline is empty.<br>Star leads with the &#9733; button, or give any lead a label (Contacted, Call back...) and it lands here automatically.</div>';
+    document.getElementById('pipeCounts').textContent = '';
+    return;
+  }
+
+  // group by stage
+  const cols = {};
+  for (const s of PIPE_STAGES) cols[s.key] = [];
+  for (const r of allResults) cols[getStage(pipeline[r.id])].push(r);
+
+  const inPlay = allResults.length - cols['won'].length - cols['lost'].length;
+  const demosOut = cols['demosent'].length + cols['postdemo'].length + cols['paymentlink'].length;
+  document.getElementById('pipeCounts').innerHTML =
+    '<b>' + inPlay + '</b> in play &middot; <b>' + demosOut + '</b> demo' + (demosOut === 1 ? '' : 's') + ' out &middot; <b>' + cols['won'].length + '</b> won';
+
+  if (pipeView === 'board') renderPipeBoard(cols, pipeline);
+  else renderPipeList(pipeline);
+}
+
+/* ---- board: compact Pipedrive-style cards ---- */
+function renderPipeBoard(cols, pipeline) {
+  const board = document.getElementById('pipeBoard');
+  board.className = 'pipe-board';
+  const today = new Date().toISOString().slice(0, 10);
+  for (const key of Object.keys(cols)) {
+    cols[key].sort((a, b) => {
+      const da = pipeline[a.id]?.due || '', db = pipeline[b.id]?.due || '';
+      const oa = da && da <= today ? 0 : 1, ob = db && db <= today ? 0 : 1;
+      if (oa !== ob) return oa - ob;
+      if (da !== db) return (da || '9999') < (db || '9999') ? -1 : 1;
+      return computeScore(b) - computeScore(a);
+    });
+  }
+
+  let h = '';
+  for (const s of PIPE_STAGES) {
+    const leads = cols[s.key];
+    h += '<div class="pipe-col" style="--col-color:' + s.color + ';" ondragover="pipeDragOver(event)" ondragleave="pipeDragLeave(event)" ondrop="pipeDrop(event, \'' + s.key + '\')">'
+      + '<div class="pipe-col-head"><span class="dot"></span>' + s.label + '<span class="count">' + leads.length + '</span></div>'
+      + '<div class="pipe-cards">';
+    if (!leads.length) {
+      h += '<div class="pipe-col-empty">Drop leads here</div>';
+    }
+    for (const r of leads) {
+      const p = pipeline[r.id] || {};
+      const ds = dueState(p.due);
+      const note = lastNoteLine(p.note);
+      const town = r.searchLocation || (r.address || '').split(',').slice(-2, -1)[0] || '';
+      const waUrl = waHref(r);
+      const dueLabel = ds === 'overdue' ? 'Overdue' : ds === 'today' ? 'Today' : fmtDue(p.due, ds);
+      h += '<div class="pipe-card' + (ds === 'overdue' ? ' is-overdue' : '') + '" draggable="true"'
+        + ' ondragstart="pipeDragStart(event, \'' + escAttr(r.id) + '\')" ondragend="pipeDragEnd(event)"'
+        + ' onclick="openLead(\'' + escAttr(r.id) + '\')" title="Click to open this lead">'
+        + '<div class="pc-top"><span class="pc-temp t-' + r.temp + '" title="' + r.temp.toUpperCase() + '"></span><span class="pc-name">' + esc(r.name) + '</span></div>'
+        + '<div class="pc-meta">' + esc([town, r.query && !/^CSV import/i.test(r.query) ? r.query : ''].filter(Boolean).join(' · ')) + '</div>'
+        + (note ? '<div class="pc-note">' + esc(note) + '</div>' : '')
+        + '<div class="pc-foot">'
+        + labelChip(p)
+        + (p.due ? '<span class="pc-due ' + ds + '" title="Follow up ' + escAttr(p.due) + '">' + ICONS.cal + dueLabel + '</span>' : '')
+        + (waUrl ? '<a class="pc-act wa" href="' + escAttr(waUrl) + '" target="_blank" rel="noopener" onclick="event.stopPropagation()" title="WhatsApp with your message pre-filled">' + ICONS.wa + '</a>' : '')
+        + (r.phone ? '<a class="pc-act" href="tel:' + escAttr(r.phone.replace(/\s/g, '')) + '" onclick="event.stopPropagation()" title="Call ' + escAttr(r.phone) + '">' + ICONS.phone + '</a>' : '')
+        + (p.by && p.by !== 'Guest' ? '<span class="pc-by-wrap">' + pcAvatar(p.by) + '</span>' : '')
+        + '</div>'
+        + '</div>';
+    }
+    h += '</div></div>';
+  }
+  board.innerHTML = h;
+}
+
+/* ---- list: the Excel view (Pipedrive Leads Inbox style) ---- */
+function renderPipeList(pipeline) {
+  const board = document.getElementById('pipeBoard');
+  board.className = 'plist-wrap';
+
+  const stageIdx = {};
+  PIPE_STAGES.forEach((s, i) => { stageIdx[s.key] = i; });
+
+  const rows = [...allResults];
+  rows.sort((a, b) => {
+    const pa = pipeline[a.id] || {}, pb = pipeline[b.id] || {};
+    let v = 0;
+    if (pipeSortBy === 'name') v = a.name.toLowerCase().localeCompare(b.name.toLowerCase());
+    else if (pipeSortBy === 'stage') v = stageIdx[getStage(pa)] - stageIdx[getStage(pb)];
+    else { // due: dated first (oldest first), undated last
+      const da = pa.due || '9999-12-31', db = pb.due || '9999-12-31';
+      v = da < db ? -1 : da > db ? 1 : 0;
+    }
+    if (v === 0) v = computeScore(b) - computeScore(a);
+    return pipeSortDir * v;
+  });
+
+  let h = '<div class="plist">'
+    + '<div class="pl-row pl-head">'
+    + '<span class="pl-sortable" onclick="setPipeSort(\'name\')">Name' + pipeSortArrow('name') + '</span>'
+    + '<span class="pl-sortable" onclick="setPipeSort(\'stage\')">Stage' + pipeSortArrow('stage') + '</span>'
+    + '<span>Label</span>'
+    + '<span>Phone</span>'
+    + '<span>Email</span>'
+    + '<span class="pl-sortable" onclick="setPipeSort(\'due\')">Follow-up' + pipeSortArrow('due') + '</span>'
+    + '<span>Last note</span>'
+    + '<span>By</span>'
+    + '</div>';
+
+  for (const r of rows) {
+    const p = pipeline[r.id] || {};
+    const stg = stageMeta(getStage(p));
+    const ds = dueState(p.due);
+    const note = lastNoteLine(p.note);
+    const town = r.searchLocation || '';
+    h += '<div class="pl-row" onclick="openLead(\'' + escAttr(r.id) + '\')" title="Click to open this lead">'
+      + '<span class="pl-name"><span class="pc-temp t-' + r.temp + '" title="' + r.temp.toUpperCase() + '"></span><span class="pl-nm">' + esc(r.name) + '</span>' + (town ? '<span class="pl-town">' + esc(town) + '</span>' : '') + '</span>'
+      + '<span><span class="stg-pill ' + stg.cls + '">' + stg.label + '</span></span>'
+      + '<span>' + labelChip(p) + '</span>'
+      + '<span class="pl-link">' + (r.phone ? '<a href="tel:' + escAttr(r.phone.replace(/\s/g, '')) + '" onclick="event.stopPropagation()">' + esc(r.phone) + '</a>' : '') + '</span>'
+      + '<span class="pl-link pl-email">' + (r.email ? '<a href="mailto:' + escAttr(r.email) + '" onclick="event.stopPropagation()" title="' + escAttr(r.email) + '">' + esc(r.email) + '</a>' : '') + '</span>'
+      + '<span class="pl-due ' + ds + '">' + (ds === 'overdue' ? fmtDue(p.due, ds) + ' !' : fmtDue(p.due, ds)) + '</span>'
+      + '<span class="pl-note" title="' + escAttr(p.note || '') + '">' + esc(note) + '</span>'
+      + '<span>' + pcAvatar(p.by) + '</span>'
+      + '</div>';
+  }
+  h += '</div>';
+  board.innerHTML = h;
+}
+
+/* board drag and drop */
+let pipeDragId = null;
+
+function pipeDragStart(e, id) {
+  pipeDragId = id;
+  e.dataTransfer.effectAllowed = 'move';
+  try { e.dataTransfer.setData('text/plain', id); } catch (err) {}
+  e.currentTarget.classList.add('drag-ghost');
+}
+function pipeDragEnd(e) {
+  e.currentTarget.classList.remove('drag-ghost');
+  document.querySelectorAll('.pipe-col.drop-hover').forEach(c => c.classList.remove('drop-hover'));
+}
+function pipeDragOver(e) {
+  e.preventDefault();
+  e.dataTransfer.dropEffect = 'move';
+  e.currentTarget.classList.add('drop-hover');
+}
+function pipeDragLeave(e) {
+  e.currentTarget.classList.remove('drop-hover');
+}
+function pipeDrop(e, stageKey) {
+  e.preventDefault();
+  e.currentTarget.classList.remove('drop-hover');
+  if (!pipeDragId) return;
+  const id = pipeDragId;
+  pipeDragId = null;
+  if (stageKey === 'won') { markAsWon(id); return; } // the full ceremony + client form
+  if (stageKey === 'lost') {
+    setLeadStage(id, 'lost');
+    setLeadStatusDirect(id, 'saidno');
+    render();
+    return;
+  }
+  setLeadStage(id, stageKey);
+  render();
+}
+
+/* ===== LEAD DRAWER ===== */
+function openLead(id) {
+  const r = findLead(id);
+  if (!r) return;
+  const p = getPipeline()[id] || {};
+  const score = computeScore(r);
+  const waUrl = waHref(r);
+  const town = r.searchLocation || '';
+
+  const noteLines = (p.note || '').split('\n').map(s => s.trim()).filter(Boolean);
+  const notesHtml = noteLines.length
+    ? noteLines.map(line => {
+        const m = line.match(/^\[([^\]]+)\]\s*(.*)$/);
+        return '<div class="ld-note-item">' + (m ? '<span class="ld-stamp">' + esc(m[1]) + '</span>' + esc(m[2]) : esc(line)) + '</div>';
+      }).join('')
+    : '<div class="ld-no-notes">No notes yet - whatever you type below is stamped with the date and saved to this lead.</div>';
+
+  const curStage = getStage(p);
+  const stageChips = PIPE_STAGES.map(s => {
+    const active = curStage === s.key;
+    if (s.key === 'won' && !active) {
+      return '<button class="stg-chip" onclick="drawerWon(\'' + escAttr(id) + '\')" title="Deal closed - celebrates and pre-fills the client form" style="color:var(--gold);border-color:var(--gold-dim);">Won</button>';
+    }
+    return '<button class="stg-chip ' + (active ? s.cls + ' active' : '') + '" onclick="drawerStage(\'' + escAttr(id) + '\', \'' + s.key + '\')" title="Move to ' + escAttr(s.label) + '">' + s.label + (active ? ' ✓' : '') + '</button>';
+  }).join('');
+
+  const statusBtns = Object.entries(STATUS_META).filter(([key]) => key !== 'skipped' && key !== 'won').map(([key, m]) =>
+    '<button class="act-btn st-btn ' + (p.status === key ? m.on : '') + '" onclick="drawerStatus(\'' + escAttr(id) + '\', \'' + key + '\')" title="' + (p.status === key ? 'Click again to clear' : 'Label as ' + m.label.toLowerCase()) + '">' + m.label + (p.status === key ? ' ✓' : '') + '</button>'
+  ).join('');
+
+  const card = document.getElementById('leadCard');
+  card.innerHTML =
+    '<button class="modal-close" onclick="closeLead()" aria-label="Close">&times;</button>'
+    + '<div class="pitch-title">' + esc(r.name) + '</div>'
+    + '<div class="ld-sub">' + r.temp.toUpperCase() + ' lead · score ' + score
+    + (town ? ' · ' + esc(town) : '')
+    + (r.rating ? ' · ' + r.rating + '★ × ' + r.reviewCount : '')
+    + (p.by && p.by !== 'Guest' ? ' · worked by ' + esc(p.by) : '') + '</div>'
+    + '<div class="pitch-section"><h4>Contact</h4><div class="ld-contact-grid">'
+    + '<div class="ld-row"><span class="ld-k">Phone</span><span class="ld-v">' + (r.phone ? '<a href="tel:' + escAttr(r.phone.replace(/\s/g, '')) + '">' + esc(r.phone) + '</a><button class="copy-mini" onclick="copyDetail(\'' + escAttr(r.phone) + '\', \'Phone\')" title="Copy phone">' + ICONS.copy + '</button>' : '-') + '</span></div>'
+    + '<div class="ld-row"><span class="ld-k">Email</span><span class="ld-v">' + (r.email ? '<a href="mailto:' + escAttr(r.email) + '">' + esc(r.email) + '</a><button class="copy-mini" onclick="copyDetail(\'' + escAttr(r.email) + '\', \'Email\')" title="Copy email">' + ICONS.copy + '</button>' : '-') + '</span></div>'
+    + '<div class="ld-row"><span class="ld-k">Site</span><span class="ld-v">' + (r.website ? '<a href="' + escAttr(r.website) + '" target="_blank" rel="noopener">' + esc(r.website.replace(/^https?:\/\/(www\.)?/, '').replace(/\/$/, '')) + '</a>' : 'none') + '</span></div>'
+    + '<div class="ld-row"><span class="ld-k">Maps</span><span class="ld-v">' + (r.mapsUrl ? '<a href="' + escAttr(r.mapsUrl) + '" target="_blank" rel="noopener">Open listing</a>' : '-') + '</span></div>'
+    + '<div class="ld-row"><span class="ld-k">Owner</span><span class="ld-v"><a onclick="editOwner(\'' + escAttr(id) + '\'); openLead(\'' + escAttr(id) + '\')" style="cursor:pointer;">' + (r.ownerName ? esc(r.ownerName) : '+ add owner') + '</a></span></div>'
+    + '<div class="ld-row"><span class="ld-k">Addr</span><span class="ld-v" title="' + escAttr(r.address) + '">' + esc(r.address || '-') + '</span></div>'
+    + '</div></div>'
+    + '<div class="pitch-section"><h4>Stage</h4><div class="ld-status-row">' + stageChips + '</div></div>'
+    + '<div class="pitch-section"><h4>Label / outcome</h4><div class="ld-status-row">' + statusBtns + '</div></div>'
+    + '<div class="pitch-section"><h4>Follow-up</h4><div class="ld-due-row">'
+    + '<input type="date" id="ldDue" value="' + escAttr(p.due || '') + '" onchange="setLeadDue(\'' + escAttr(id) + '\', this.value); render(); openLead(\'' + escAttr(id) + '\');">'
+    + (p.due ? '<button class="act-btn" onclick="setLeadDue(\'' + escAttr(id) + '\', \'\'); render(); openLead(\'' + escAttr(id) + '\')">Clear</button>' : '')
+    + (dueState(p.due) === 'overdue' ? '<span class="pc-due overdue">' + ICONS.cal + 'Overdue</span>' : dueState(p.due) === 'today' ? '<span class="pc-due today">' + ICONS.cal + 'Due today</span>' : '')
+    + '</div></div>'
+    + '<div class="pitch-section"><h4>Notes</h4><div class="ld-notes">' + notesHtml + '</div>'
+    + '<div class="ld-note-add"><input type="text" id="ldNoteInput" placeholder="Add a note... (Enter to save)" onkeydown="if(event.key===\'Enter\')drawerAddNote(\'' + escAttr(id) + '\')">'
+    + '<button class="btn btn-primary btn-sm" onclick="drawerAddNote(\'' + escAttr(id) + '\')">Add</button></div></div>'
+    + '<div class="pitch-actions">'
+    + (waUrl ? '<a class="act-btn wa-btn" href="' + escAttr(waUrl) + '" target="_blank" rel="noopener">' + ICONS.wa + 'WhatsApp</a>' : '')
+    + '<button class="act-btn" onclick="copyMsg(\'' + escAttr(id) + '\')">' + ICONS.copy + 'Copy message</button>'
+    + '<button class="act-btn" onclick="closeLead(); openPitch(\'' + escAttr(id) + '\')">' + ICONS.pitch + 'Autopitch</button>'
+    + '<button class="act-btn" onclick="closeLead(); openGemini(\'' + escAttr(id) + '\')">' + ICONS.sparkle + 'AI</button>'
+    + '<button class="act-btn" onclick="copyBrief(\'' + escAttr(id) + '\')">' + ICONS.brief + 'Demo brief</button>'
+    + '</div>';
+
+  document.getElementById('leadModal').classList.add('open');
+}
+
+function closeLead() {
+  document.getElementById('leadModal').classList.remove('open');
+}
+
+function drawerStatus(id, key) {
+  setLeadStatus(id, key); // toggles + re-renders the board behind the drawer
+  openLead(id);
+}
+
+function drawerWon(id) {
+  closeLead();
+  markAsWon(id);
+}
+
+function drawerStage(id, key) {
+  if (key === 'lost') {
+    setLeadStage(id, 'lost');
+    setLeadStatusDirect(id, 'saidno');
+  } else {
+    setLeadStage(id, key);
+  }
+  render();
+  openLead(id);
+}
+
+function drawerAddNote(id) {
+  const input = document.getElementById('ldNoteInput');
+  if (!input) return;
+  const text = input.value.trim();
+  if (!text) return;
+  appendLeadNote(id, text);
+  render();
+  openLead(id);
+  setTimeout(() => { const el = document.getElementById('ldNoteInput'); if (el) el.focus(); }, 30);
+}
+
+function appendLeadNote(id, text) {
+  const stamp = new Date().toLocaleDateString('en-IE', { day: 'numeric', month: 'short' })
+    + (currentProfile !== 'Guest' ? ' · ' + currentProfile : '');
+  const entry = '[' + stamp + '] ' + text;
+  const p = getPipeline();
+  if (!p[id]) p[id] = {};
+  p[id].note = ((p[id].note ? p[id].note + '\n' : '') + entry).slice(-2000);
+  if (!demoMode) store.set('st_pipeline', p);
+  sbUpdateLead(id, { status: p[id].status || '', status_by: p[id].by || '', note: p[id].note });
+}
+
 /* ===== RENDER ===== */
 function render() {
+  if (viewMode === 'pipeline') { renderPipeline(); return; }
   const filtered = getFiltered();
   const el = document.getElementById('results');
   const pipeline = getPipeline();
@@ -5174,7 +5939,9 @@ function render() {
     const score = computeScore(r);
     const waUrl = waHref(r);
     const wa = waUrl ? escAttr(waUrl) : '';
-    const notePreview = p.note ? '<div class="note-preview">' + esc(p.note) + '</div>' : '';
+    const lastNote = lastNoteLine(p.note);
+    const noteCount = p.note ? p.note.split('\n').filter(s => s.trim()).length : 0;
+    const notePreview = lastNote ? '<div class="note-preview" title="' + escAttr(p.note) + '">' + esc(lastNote) + (noteCount > 1 ? ' <span style="opacity:.65">(+' + (noteCount - 1) + ' more)</span>' : '') + '</div>' : '';
     const emailLine = r.email
       ? '<div class="biz-links"><a href="mailto:' + escAttr(r.email) + '" class="biz-link">' + esc(r.email) + '</a>'
         + '<button class="copy-mini" onclick="copyDetail(\'' + escAttr(r.email) + '\', \'Email\')" title="Copy email address" aria-label="Copy email address">' + ICONS.copy + '</button></div>'
@@ -5216,6 +5983,17 @@ function render() {
       const sm = STATUS_META[p.status];
       chips.unshift('<span class="meta-chip ' + sm.chip + '">' + sm.chipText + (p.by ? ' by ' + esc(p.by) : '') + '</span>');
     }
+    // demo-flow stages show as a pill (the closing stages already read from the status chip)
+    const rowStage = getStage(p);
+    if (['demotosend', 'demosent', 'postdemo', 'paymentlink'].includes(rowStage)) {
+      const sm2 = stageMeta(rowStage);
+      chips.unshift('<span class="stg-pill ' + sm2.cls + '" title="Pipeline stage - manage it from the Pipeline tab">' + sm2.label + '</span>');
+    }
+    if (p.due) {
+      const ds = dueState(p.due);
+      const dueTxt = ds === 'overdue' ? 'Overdue' : ds === 'today' ? 'Due today' : 'Follow-up ' + new Date(p.due + 'T00:00').toLocaleDateString('en-IE', { day: 'numeric', month: 'short' });
+      chips.unshift('<span class="meta-chip ' + (ds === 'overdue' ? 'bad' : ds === 'today' ? 'warn' : '') + ' clickable" onclick="openLead(\'' + escAttr(r.id) + '\')" title="Follow up ' + escAttr(p.due) + ' - click to open the lead">' + dueTxt + '</span>');
+    }
     const dupKey = normalizeIrishPhone(r.phone);
     if (dupKey && dupCounts[dupKey] > 1) chips.push('<span class="meta-chip warn" title="Same phone number on multiple listings - likely one owner, bigger deal">&times;' + dupCounts[dupKey] + ' listings</span>');
     chips.push('<span class="meta-chip clickable" onclick="editOwner(\'' + escAttr(r.id) + '\')" title="Click to edit owner/contact name">' + (r.ownerName ? 'Owner: ' + esc(r.ownerName) : '+ owner') + '</span>');
@@ -5232,7 +6010,7 @@ function render() {
       + '<div class="row-check"><input type="checkbox" id="chk-' + escAttr(r.id) + '" onclick="toggleSelect(event, \'' + escAttr(r.id) + '\')" ' + (selectedIds.has(r.id) ? 'checked' : '') + ' title="Tick to select - shift-click selects a range" aria-label="Select ' + escAttr(r.name) + '"></div>'
       + '<div><div class="biz-name">'
       + '<button class="star-btn' + (savedSet.has(r.id) ? ' saved' : '') + '" onclick="toggleSaved(\'' + escAttr(r.id) + '\')" title="' + (savedSet.has(r.id) ? 'Saved - click to remove from the Saved list' : 'Save this lead to your Saved list with one click') + '" aria-label="Save lead">' + ICONS.star + '</button>'
-      + tag + '<span>' + esc(r.name) + '</span>'
+      + tag + '<span onclick="openLead(\'' + escAttr(r.id) + '\')" style="cursor:pointer;" title="Open this lead - statuses, follow-up date and notes in one place">' + esc(r.name) + '</span>'
       + (r.query && !/^CSV import/i.test(r.query) ? '<span class="industry-tag">' + esc(r.query.toLowerCase()) + '</span>' : '')
       + '</div>' + links + emailLine + socialRow + metaRow + oppRow + angleLine + attribution + notePreview + '</div>'
       + '<div class="addr">' + esc(r.address)
@@ -5244,11 +6022,11 @@ function render() {
       + '<div class="rating"><span class="m-label">Reviews</span>' + r.reviewCount + '</div>'
       + '<div>'
         + '<div class="lead-actions">'
-        + Object.entries(STATUS_META).map(([key, m]) =>
+        + Object.entries(STATUS_META).filter(([key]) => key !== 'won').map(([key, m]) =>
           '<button class="act-btn st-btn ' + (p.status === key ? m.on : '') + '" onclick="setLeadStatus(\'' + escAttr(r.id) + '\', \'' + key + '\')" title="' + (p.status === key ? 'Click again to clear this label' : 'Label as ' + m.label.toLowerCase()) + '">' + m.label + (p.status === key ? ' \u2713' : '') + '</button>'
         ).join('')
         + '<button class="act-btn" onclick="toggleNote(\'' + escAttr(r.id) + '\')">Note</button>'
-        + '<button class="act-btn" onclick="markAsWon(\'' + escAttr(r.id) + '\')" title="Deal closed - adds this lead to the Clients tab pre-filled" style="color:var(--gold);border-color:var(--gold-dim);">Won</button>'
+        + '<button class="act-btn' + (p.status === 'won' ? ' on-won' : '') + '" onclick="markAsWon(\'' + escAttr(r.id) + '\')" title="Deal closed - adds this lead to the Clients tab pre-filled" style="' + (p.status === 'won' ? '' : 'color:var(--gold);border-color:var(--gold-dim);') + '">Won' + (p.status === 'won' ? ' \u2713' : '') + '</button>'
         + '</div>'
         + '<div class="lead-actions" style="margin-top:6px;">'
         + (wa ? '<a class="act-btn wa-btn" href="' + wa + '" target="_blank" rel="noopener" title="Opens WhatsApp to this lead with your outreach message pre-filled">' + ICONS.wa + 'WhatsApp</a>' : '')
@@ -5257,7 +6035,7 @@ function render() {
         + '<button class="act-btn" onclick="openPitch(\'' + escAttr(r.id) + '\')" title="Pops up the key talking points and angle for pitching this exact business">' + ICONS.pitch + 'Autopitch</button>'
         + '<button class="act-btn" onclick="openGemini(\'' + escAttr(r.id) + '\')" title="Gemini AI actions for this lead: verify website status, find owner and contacts, business intel, upgraded pitch, demo build prompt">' + ICONS.sparkle + 'AI</button>'
         + '</div>'
-        + '<input class="note-input" id="note-' + escAttr(r.id) + '" placeholder="Add a note..." value="' + escAttr(p.note || '') + '" onchange="setLeadNote(\'' + escAttr(r.id) + '\', this.value)">'
+        + '<input class="note-input" id="note-' + escAttr(r.id) + '" placeholder="Add a note... (saved with today\'s date)" onchange="if(this.value.trim()){appendLeadNote(\'' + escAttr(r.id) + '\', this.value); this.value=\'\'; render();}">'
       + '</div>'
       + '</div>';
   }
@@ -5321,9 +6099,11 @@ function exportCSV(format, scope) {
   const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
   const url = URL.createObjectURL(blob);
   const a = document.createElement('a');
-  const q = document.getElementById('query').value.trim().replace(/\s+/g, '-') || 'leads';
+  const viewName = viewMode === 'all' ? 'all-leads'
+    : viewMode === 'search' ? (document.getElementById('query').value.trim().replace(/\s+/g, '-') || 'leads')
+    : (lists.find(l => l.id === viewMode)?.name || 'leads').toLowerCase().replace(/[^a-z0-9]+/g, '-');
   a.href = url;
-  a.download = (scope === 'all' ? 'all-leads' : q + '-' + format) + '.csv';
+  a.download = (scope === 'all' ? 'all-leads' : viewName + '-' + format) + '.csv';
   a.click();
   URL.revokeObjectURL(url);
 }
@@ -5524,6 +6304,10 @@ const ICONS = {
   pitch: '<svg viewBox="0 0 24 24" width="12" height="12" fill="#EACE85" stroke="#CDA04A" stroke-width="1" stroke-linejoin="round" aria-hidden="true"><path d="M13 2L3 14h7l-1 8 10-12h-7l1-8z"/></svg>',
   sparkle: '<svg viewBox="0 0 24 24" width="13" height="13" fill="currentColor" aria-hidden="true"><path d="M12 2c.6 4.8 3.2 7.4 8 8-4.8.6-7.4 3.2-8 8-.6-4.8-3.2-7.4-8-8 4.8-.6 7.4-3.2 8-8z"/></svg>',
   star: '<svg viewBox="0 0 24 24" width="15" height="15" fill="currentColor" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round" aria-hidden="true"><path d="M12 2l2.9 6.26 6.6.7-4.95 4.5 1.4 6.54L12 16.77 6.05 20l1.4-6.54L2.5 8.96l6.6-.7z"/></svg>',
+  board: '<svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="vertical-align:-2px;"><rect x="3" y="3" width="5" height="18" rx="1"/><rect x="10" y="3" width="5" height="12" rx="1"/><rect x="17" y="3" width="5" height="7" rx="1"/></svg>',
+  rows: '<svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="vertical-align:-2px;"><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/></svg>',
+  cal: '<svg viewBox="0 0 24 24" width="11" height="11" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/></svg>',
+  phone: '<svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M22 16.92v3a2 2 0 01-2.18 2 19.79 19.79 0 01-8.63-3.07 19.5 19.5 0 01-6-6 19.79 19.79 0 01-3.07-8.67A2 2 0 014.11 2h3a2 2 0 012 1.72c.127.96.361 1.903.7 2.81a2 2 0 01-.45 2.11L8.09 9.91a16 16 0 006 6l1.27-1.27a2 2 0 012.11-.45c.907.339 1.85.573 2.81.7A2 2 0 0122 16.92z"/></svg>',
   sun: '<svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="#D89527" stroke-width="2" stroke-linecap="round" aria-hidden="true"><circle cx="12" cy="12" r="4" fill="#EDC472" stroke="#D89527"/><path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M6.34 17.66l-1.41 1.41M19.07 4.93l-1.41 1.41"/></svg>',
   moon: '<svg viewBox="0 0 24 24" width="15" height="15" fill="#91B1CC" stroke="#49729A" stroke-width="1.5" stroke-linejoin="round" aria-hidden="true"><path d="M21 12.79A9 9 0 1111.21 3 7 7 0 0021 12.79z"/></svg>'
 };
@@ -5761,6 +6545,7 @@ initLightMode();
 initSettings();
 updateQuickstart();
 loadClients().then(renderTabs);
+/* build: pipeline board + debug pass, Jun 2026 */
 </script>
 </body>
 </html>
